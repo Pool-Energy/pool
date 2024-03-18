@@ -1,4 +1,4 @@
-git+https://github.com/openchia/chia-blockchain.git@stable/2.1#egg=chia-blockchain
+git+https://github.com/pool-energy/chia-blockchain.git@stable/2.1#egg=chia-blockchain
 git+https://github.com/olucurious/PyFCM.git@1.5.4
 chia_rs
 setuptools>=65.5.1
@@ -12,3 +12,4 @@ python-json-logger==2.0.2
 py-spy==0.3.11
 pytest==6.2.4
 pytest-asyncio==0.18.2
+isHex==1.1.0
