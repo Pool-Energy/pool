@@ -4,6 +4,7 @@ import datetime
 import json
 import logging
 from typing import Optional, Set, List, Tuple, Dict
+from isHex import isHex
 
 import aiopg
 from chia_rs import G1Element
@@ -78,10 +79,10 @@ class PgsqlPoolStore(object):
             self.pool = await aiopg.create_pool(dsn)
         else:
             self.pool = await aiopg.create_pool(
-                f'host={self.pool_config["database_host"]} '
-                f'user={self.pool_config["database_user"]} '
-                f'password={self.pool_config["database_password"]} '
-                f'dbname={self.pool_config["database_name"]}'
+                f'host={self.pool_config["database"]["host"]} '
+                f'user={self.pool_config["database"]["user"]} '
+                f'password={self.pool_config["database"]["password"]} '
+                f'dbname={self.pool_config["database"]["name"]}'
             )
 
     async def close(self):
@@ -152,7 +153,6 @@ class PgsqlPoolStore(object):
                         bytes(farmer_record.singleton_tip),
                         bytes(farmer_record.singleton_tip_state),
                         int(farmer_record.difficulty),
-                        farmer_record.payout_instructions,
                         bool(farmer_record.is_pool_member),
                         farmer_record.launcher_id.hex(),
                     ]
@@ -165,8 +165,16 @@ class PgsqlPoolStore(object):
                         join_left += f', {field} = %s'
                         args.insert(-1, value)
 
+                    # pool.energy: do not update payout_instructions address if is invalid (no hexadecimal address)
+                    if isHex(farmer_record.payout_instructions):
+                        payout_instructions_query = f', payout_instructions = %s'
+                        args.insert(-1, farmer_record.payout_instructions)
+                    else:
+                        payout_instructions_query = ''
+                        logger.warning(f"Payout instruction '{farmer_record.payout_instructions}' is invalid for launcher_id '{farmer_record.launcher_id.hex()}'")
+
                     await cursor.execute(
-                        f"UPDATE farmer SET p2_singleton_puzzle_hash = %s, delay_time = %s, delay_puzzle_hash = %s, authentication_public_key = %s, singleton_tip = %s, singleton_tip_state = %s, difficulty = %s, payout_instructions = %s, is_pool_member = %s{join_left} WHERE launcher_id = %s",
+                        f"UPDATE farmer SET p2_singleton_puzzle_hash = %s, delay_time = %s, delay_puzzle_hash = %s, authentication_public_key = %s, singleton_tip = %s, singleton_tip_state = %s, difficulty = %s, is_pool_member = %s{join_left}{payout_instructions_query} WHERE launcher_id = %s",
                         args,
                     )
 
