@@ -1,5 +1,5 @@
-Subject: OpenChia.io: We are missing your partials
-From: contact@openchia.io
+Subject: Pool.Energy: We are missing your partials
+From: contact@pool.energy
 To: %(to)s
 
 Greetings fellow farmer!
@@ -12,5 +12,5 @@ If you have decided to leave our pool we are very sorry to see you go. We hope w
 
 Cheers!
 
-OpenChia.io Team
-https://openchia.io
+Pool.Energy Team
+https://pool.energy
