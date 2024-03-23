@@ -23,7 +23,16 @@ def get_new_difficulty(
 
     # If we recently updated difficulty, don't update again
     if any(difficulty != current_difficulty for timestamp, difficulty in recent_partials):
-        return current_difficulty
+        before_last_time = last_time = recent_partials[0][0]
+        last_diff = recent_partials[0][1]
+        for partial in recent_partials:
+            if partial[1] != last_diff:
+                before_last_time = partial[0]
+                break
+
+        # Do not allow difficulty changes in less than 2 hours
+        if last_time - before_last_time < 2 * 3600:
+            return custom_difficulty
 
     # Lower the difficulty if we are really slow since our last partial
     last_timestamp = recent_partials[0][0]
@@ -39,10 +48,16 @@ def get_new_difficulty(
         number_of_partials_target = int(number_of_partials_target * 2)
     elif custom_difficulty == 'LOW':
         number_of_partials_target = int(number_of_partials_target * 1.5)
+    elif custom_difficulty == 'MEDIUM':
+        pass
     elif custom_difficulty == 'HIGH':
         number_of_partials_target = int(number_of_partials_target * 0.75)
     elif custom_difficulty == 'HIGHEST':
         number_of_partials_target = int(number_of_partials_target * 0.5)
+    elif custom_difficulty is not None and custom_difficulty.startswith('CUSTOM:'):
+        number_of_partials_target = int(custom_difficulty[7:])
+    elif custom_difficulty:
+        raise RuntimeError(custom_difficulty)
 
     # If we don't have enough partials at this difficulty and time between last and
     # 1st partials is below target time, don't update yet
@@ -51,6 +66,10 @@ def get_new_difficulty(
 
     # Adjust time_taken if number of partials didn't reach number_of_partials_target
     if len(recent_partials) < number_of_partials_target:
+        time_taken = time_taken * number_of_partials_target / len(recent_partials)
+
+    # Adjust time_taken if we changed custom difficulty and we are getting 20% more partials than we should
+    if len(recent_partials) > number_of_partials_target * 1.2:
         time_taken = time_taken * number_of_partials_target / len(recent_partials)
 
     # Finally, this is the standard case of normal farming and slow (or no) growth, adjust to the new difficulty
