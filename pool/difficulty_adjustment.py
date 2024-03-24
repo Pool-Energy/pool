@@ -23,16 +23,7 @@ def get_new_difficulty(
 
     # If we recently updated difficulty, don't update again
     if any(difficulty != current_difficulty for timestamp, difficulty in recent_partials):
-        before_last_time = last_time = recent_partials[0][0]
-        last_diff = recent_partials[0][1]
-        for partial in recent_partials:
-            if partial[1] != last_diff:
-                before_last_time = partial[0]
-                break
-
-        # Do not allow difficulty changes in less than 2 hours
-        if last_time - before_last_time < 2 * 3600:
-            return custom_difficulty
+        return custom_difficulty
 
     # Lower the difficulty if we are really slow since our last partial
     last_timestamp = recent_partials[0][0]
@@ -68,8 +59,8 @@ def get_new_difficulty(
     if len(recent_partials) < number_of_partials_target:
         time_taken = time_taken * number_of_partials_target / len(recent_partials)
 
-    # Adjust time_taken if we changed custom difficulty and we are getting 20% more partials than we should
-    if len(recent_partials) > number_of_partials_target * 1.2:
+    # Adjust time_taken if we changed custom difficulty and we are getting 50% more partials than we should
+    if len(recent_partials) > number_of_partials_target * 1.5:
         time_taken = time_taken * number_of_partials_target / len(recent_partials)
 
     # Finally, this is the standard case of normal farming and slow (or no) growth, adjust to the new difficulty
