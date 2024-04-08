@@ -17,6 +17,10 @@ def get_new_difficulty(
     difficulty, or the same difficulty if we do not want to update.
     """
 
+    # Return fixed difficulty if custom difficulty with EXPERT is set
+    if custom_difficulty is not None and custom_difficulty.startswith('EXPERT:'):
+        return int(custom_difficulty[7:])
+
     # If we haven't processed any partials yet, maintain the current (default) difficulty
     if len(recent_partials) == 0:
         return current_difficulty
