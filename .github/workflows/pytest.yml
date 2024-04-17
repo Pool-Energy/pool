@@ -24,4 +24,6 @@ jobs:
         with:
           python-version: '3.11'
       - run: pip install -r requirements.txt
+        env:
+          GITHUB_TOKEN: ${{ secrets.POOLENERGY_GITHUB_TOKEN }}
       - run: pytest -v tests
