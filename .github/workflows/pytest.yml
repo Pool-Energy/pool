@@ -1,20 +1,27 @@
-name: pytest
+name: Pytest
+
+# This workflow uses actions that are not certified by GitHub.
+# They are provided by a third-party and are governed by
+# separate terms of service, privacy policy, and support
+# documentation.
 
 on:
   push:
-    branches: [ main, 'feat/*' ]
-    # Publish semver tags as releases.
+    branches: ['main', 'feature/*', 'bugfix/*', 'hotfix/*']
     tags: [ 'v*.*.*' ]
   pull_request:
-    branches: [ main ]
+    branches: ['main', 'feature/*', 'bugfix/*', 'hotfix/*']
 
 jobs:
-  build:
+  pytest:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
     steps:
-    - uses: actions/checkout@v2
-    - uses: actions/setup-python@v2
-      with:
-        python-version: '3.9'
-    - run: pip install -r requirements.txt
-    - run: pytest -v tests
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install -r requirements.txt
+      - run: pytest -v tests

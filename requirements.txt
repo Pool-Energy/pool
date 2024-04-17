@@ -1,5 +1,5 @@
-git+https://github.com/pool-energy/chia-blockchain.git@stable/2.1#egg=chia-blockchain
-git+https://github.com/olucurious/PyFCM.git@1.5.4
+git+https://${GITHUB_TOKEN}@github.com/pool-energy/chia-blockchain.git@stable/2.1#egg=chia-blockchain
+git+https://${GITHUB_TOKEN}@github.com/olucurious/PyFCM.git@1.5.4
 chia_rs
 setuptools>=65.5.1
 uvloop~=0.19.0
