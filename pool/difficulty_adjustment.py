@@ -27,7 +27,7 @@ def get_new_difficulty(
 
     # If we recently updated difficulty, don't update again
     if any(difficulty != current_difficulty for timestamp, difficulty in recent_partials):
-        return custom_difficulty
+        return current_difficulty
 
     # Lower the difficulty if we are really slow since our last partial
     last_timestamp = recent_partials[0][0]
