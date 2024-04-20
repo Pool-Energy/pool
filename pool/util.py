@@ -191,7 +191,6 @@ async def create_transaction(
                 wallet_id=wallet['id'],
             ):
                 if coin.puzzle_hash == wallet['puzzle_hash']:
-                    logger.debug(f'Skip coin ({coin.amount}), puzzle hash is the same as wallet puzzle hash: {coin.puzzle_hash}')
                     continue
                 if coin not in non_ph_coins:
                     amount_missing -= int(coin.amount)
@@ -199,7 +198,12 @@ async def create_transaction(
                     if amount_missing <= 0:
                         break
             else:
-                raise RuntimeError('Not enough non puzzle hash coins for payment')
+                raise RuntimeError(
+                    f'Not enough non puzzle hash coins for payment.'
+                    f'Remaining amount: {amount_missing}'
+                    f'Total coin(s): {len(coin)}'
+                    f'Total non puzzle hash coin(s): {len(non_ph_coins)}'
+                )
             transaction = await wallet['rpc_client'].create_signed_transaction(
                 additions,
                 tx_config=DEFAULT_TX_CONFIG,
