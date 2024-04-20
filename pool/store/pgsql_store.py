@@ -410,7 +410,7 @@ class PgsqlPoolStore(object):
                         error,
                         partial_payload.harvester_id.hex(),
                         get_plot_id(partial_payload.proof_of_space).hex(),
-                        (str((req_metadata.get_chia_version() or ''))[:20] or None) if req_metadata else None,
+                        (str((req_metadata.get_chia_useragent() or ''))[:20] or None) if req_metadata else None,
                         req_metadata.get_remote() if req_metadata else None,
                         req_metadata.get_host() if req_metadata else None,
                     ),

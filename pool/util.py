@@ -52,6 +52,18 @@ class RequestMetadata:
                 logger.error('Failed to parse chia version %r: %r', user_agent, e)
                 return
 
+    def get_chia_useragent(self) -> Optional[str]:
+        user_agent = self.headers.get('user-agent')
+        if not user_agent:
+            return
+
+        if user_agent.startswith('Chia Blockchain v.'):
+            try:
+                return user_agent.split('Chia Blockchain v.', 1)[-1].split('-')[0].split('.', 3)
+            except Exception as e:
+                logger.error('Failed to parse chia user-agent %r: %r', user_agent, e)
+                return
+
     def get_host(self) -> Optional[str]:
         try:
             forwarded = self.headers.get('x-forwarded-host')
@@ -177,7 +189,7 @@ async def create_transaction(
             )
         else:
             # We are short of coins to make the payment
-            logger.info('Getting extra non ph coins')
+            logger.info('Getting extra non puzzle hash coins')
 
             balance = await wallet['rpc_client'].get_wallet_balance(wallet['id'])
             logger.debug(f'Get balance for wallet {wallet["id"]}: {balance}')
@@ -190,7 +202,7 @@ async def create_transaction(
                 coin_selection_config=DEFAULT_TX_CONFIG.coin_selection_config,
                 wallet_id=wallet['id'],
             ):
-                if coin.puzzle_hash == wallet['puzzle_hash'] and coin.amount != 0.007437999636:
+                if coin.puzzle_hash == wallet['puzzle_hash']:
                     continue
                 if coin not in non_ph_coins:
                     amount_missing -= int(coin.amount)
