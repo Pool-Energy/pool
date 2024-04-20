@@ -46,7 +46,7 @@ class RequestMetadata:
 
         if user_agent.startswith('Chia Blockchain v.'):
             try:
-                return user_agent.split('Chia Blockchain v.', 1)[-1].split('-')[0].split('.', 3)
+                return user_agent.split('Chia Blockchain v.', 1)[-1].split('-')[0]
             except Exception as e:
                 logger.error('Failed to parse chia version %r: %r', user_agent, e)
                 return
