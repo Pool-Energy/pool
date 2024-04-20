@@ -535,6 +535,8 @@ class Pool:
                 for wallet in self.wallets:
                     try:
                         wallet['synced'] = await wallet['rpc_client'].get_synced()
+                        wallet['syncing'] = await wallet['rpc_client'].get_sync_status()
+                        wallet['height'] = await wallet['rpc_client'].get_height_info()
                         wallet['balance'] = await wallet['rpc_client'].get_wallet_balance(
                             str(wallet['id'])
                         )
@@ -548,7 +550,13 @@ class Pool:
                     'blockchain_space': self.blockchain_state['space'],
                     'blockchain_avg_block_time': await self.get_average_block_time(),
                     'wallets': json.dumps([
-                        {'address': i['address'], 'balance': i['balance'], 'synced': i['synced']}
+                        {
+                            'address': i['address'],
+                            'balance': i['balance'],
+                            'synced': i['synced'],
+                            'syncing': i['syncing'],
+                            'height': i['height'],
+                        }
                         for i in self.wallets
                     ]),
                 }))
