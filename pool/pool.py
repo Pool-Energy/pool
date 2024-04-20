@@ -13,6 +13,7 @@ from asyncio import Task
 from collections import defaultdict
 from decimal import Decimal as D
 from typing import Dict, Optional, Set, List, Tuple
+from packaging.version import Version
 
 from chia_rs import AugSchemeMPL, G1Element
 from chia.pools.pool_wallet_info import PoolState, PoolSingletonState
@@ -1736,7 +1737,7 @@ class Pool:
             )
 
         # No version means <= 1.2
-        if not req_metadata or not (chia_version := req_metadata.get_chia_version()):
+        if not req_metadata or not (chia_version := Version('.'.join(req_metadata.get_chia_version()))):
             if not self.testnet and not (chia_version and chia_version.major >= 1 and chia_version.minor >= 8):
                 await self.partials.add_partial(
                     partial.payload,

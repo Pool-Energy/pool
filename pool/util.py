@@ -9,7 +9,6 @@ from chia.protocols.pool_protocol import PoolErrorCode, ErrorResponse
 from chia.util.ints import uint16
 from chia.util.json_util import obj_to_response
 from chia.wallet.util.tx_config import DEFAULT_TX_CONFIG
-from packaging.version import Version
 
 logger = logging.getLogger('util')
 
@@ -47,21 +46,9 @@ class RequestMetadata:
 
         if user_agent.startswith('Chia Blockchain v.'):
             try:
-                return Version('.'.join(user_agent.split('Chia Blockchain v.', 1)[-1].split('-')[0].split('.', 3)[:3]))
-            except Exception as e:
-                logger.error('Failed to parse chia version %r: %r', user_agent, e)
-                return
-
-    def get_chia_useragent(self) -> Optional[str]:
-        user_agent = self.headers.get('user-agent')
-        if not user_agent:
-            return
-
-        if user_agent.startswith('Chia Blockchain v.'):
-            try:
                 return user_agent.split('Chia Blockchain v.', 1)[-1].split('-')[0].split('.', 3)
             except Exception as e:
-                logger.error('Failed to parse chia user-agent %r: %r', user_agent, e)
+                logger.error('Failed to parse chia version %r: %r', user_agent, e)
                 return
 
     def get_host(self) -> Optional[str]:
