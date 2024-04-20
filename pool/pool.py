@@ -1737,7 +1737,7 @@ class Pool:
             )
 
         # No version means <= 1.8
-        if not req_metadata or not (chia_version := Version('.'.join(req_metadata.get_chia_version()))):
+        if not req_metadata or not (chia_version := Version('.'.join(req_metadata.get_chia_version()[:3]))):
             if not self.testnet and not (chia_version and chia_version.major >= 1 and chia_version.minor >= 8):
                 await self.partials.add_partial(
                     partial.payload,
