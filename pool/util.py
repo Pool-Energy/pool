@@ -180,12 +180,17 @@ async def create_transaction(
             logger.info('Getting extra non ph coins')
 
             balance = await wallet['rpc_client'].get_wallet_balance(wallet['id'])
+            logger.debug(f'Get balance for wallet {wallet["id"]}: {balance}')
+
             amount_missing = total_additions - total_coins
+            logger.debug(f'Set missing amount (amount_missing, total_additions, total_coins): {amount_missing}, {total_additions}, {total_coins}')
+
             for coin in await wallet['rpc_client'].select_coins(
                 amount=balance['spendable_balance'],
                 coin_selection_config=DEFAULT_TX_CONFIG.coin_selection_config,
                 wallet_id=wallet['id'],
             ):
+                logger.debug(f'Verify coin (name, amount, puzzle_hash): {coin.name()} {coin.amount} {coin.puzzle_hash}')
                 if coin.puzzle_hash == wallet['puzzle_hash']:
                     continue
                 if coin not in non_ph_coins:
