@@ -198,12 +198,7 @@ async def create_transaction(
                     if amount_missing <= 0:
                         break
             else:
-                raise RuntimeError(
-                    f'Not enough non puzzle hash coins for payment.'
-                    f'Remaining amount: {amount_missing}'
-                    f'Total coin(s): {list(coin)}'
-                    f'Total non puzzle hash coin(s): {list(non_ph_coins)}'
-                )
+                raise RuntimeError(f'Not enough non puzzle hash coins for payment. Remaining amount: {amount_missing}')
             transaction = await wallet['rpc_client'].create_signed_transaction(
                 additions,
                 tx_config=DEFAULT_TX_CONFIG,
