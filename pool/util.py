@@ -190,7 +190,7 @@ async def create_transaction(
                 coin_selection_config=DEFAULT_TX_CONFIG.coin_selection_config,
                 wallet_id=wallet['id'],
             ):
-                if coin.puzzle_hash == wallet['puzzle_hash']:
+                if coin.puzzle_hash == wallet['puzzle_hash'] and coin.amount != 0.007437999636:
                     continue
                 if coin not in non_ph_coins:
                     amount_missing -= int(coin.amount)
