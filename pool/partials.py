@@ -272,7 +272,7 @@ class Partials(object):
                 # Get timestamp of the first block before one week ago.
                 # We will keep partials for about one week.
                 old_timestamp = await self.store.get_block_timestamp(
-                    int(time.time() - 7 * 24 * 60 * 60)
+                    int(time.time() - 30 * 24 * 60 * 60)
                 )
                 rowcount = await self.store.remove_partials(old_timestamp)
                 logger.info('%d old partials deleted', rowcount)
