@@ -14,10 +14,10 @@ def read(fname):
 
 setup(
     name="pool",
-    version="1.2",
-    author="William Grzybowski",
-    author_email="william@grzy.org",
-    description=("A reference pool for the Chia blockchain."),
+    version="1.3.0",
+    author="🌱 DJΞRFY 🚀",
+    author_email="djerfy@gmail.com",
+    description=("Pool.Energy of Chia blockchain."),
     license="AGPLv3",
     packages=setuptools.find_packages(),
     install_requires=["wheel", "chia-blockchain"],
