@@ -40,16 +40,19 @@ class RequestMetadata:
         self.headers = {k.lower(): v for k, v in self.headers.items()}
 
     def get_chia_version(self) -> Optional[str]:
-        user_agent = self.headers.get('user-agent')
-        if not user_agent:
+        if 'x-chia-version' in self.headers:
+            user_agent = self.headers.get('x-chia-version')
+        elif 'user-agent' in self.headers:
+            user_agent = self.headers.get('user-agent')
+        else:
+            logger.debug('Cannot get chia version, no x-chia-version or user-agent headers')
             return
 
-        if user_agent.startswith('Chia Blockchain v.'):
-            try:
-                return user_agent.split('Chia Blockchain v.', 1)[-1].split('-')[0]
-            except Exception as e:
-                logger.error('Failed to parse chia version %r: %r', user_agent, e)
-                return
+        try:
+            return user_agent.split('Chia Blockchain v.', 1)[-1].split('-')[0]
+        except Exception as e:
+            logger.error('Failed to parse chia version %r: %r', user_agent, e)
+            return
 
     def get_host(self) -> Optional[str]:
         try:
