@@ -1736,9 +1736,9 @@ class Pool:
                 f"Invalid pool contract puzzle hash {partial.payload.proof_of_space.pool_contract_puzzle_hash}",
             )
 
-        # No version means <= 1.8
+        # No version means <= 2.1 (https://www.chia.net/2024/02/15/chia-blockchain-explainer-the-halvings/)
         if not req_metadata or not (chia_version := Version('.'.join(req_metadata.get_chia_version().split('.', 3)[:3]))):
-            if not self.testnet and not (chia_version and chia_version.major >= 1 and chia_version.minor >= 8):
+            if not self.testnet and not (chia_version and chia_version.major >= 2 and chia_version.minor >= 1):
                 await self.partials.add_partial(
                     partial.payload,
                     req_metadata,
@@ -1748,7 +1748,7 @@ class Pool:
                 )
                 return error_dict(
                     PoolErrorCode.REQUEST_FAILED,
-                    "Invalid version, make sure to use client version 1.8.0 or higher.",
+                    "Invalid version, make sure to use client version 2.1.0 or higher.",
                 )
 
         response = await self.get_signage_point_or_eos(partial)
