@@ -40,12 +40,12 @@ class RequestMetadata:
         self.headers = {k.lower(): v for k, v in self.headers.items()}
 
     def get_chia_version(self) -> Optional[str]:
-        if 'x-chia-version' in self.headers:
-            user_agent = self.headers.get('x-chia-version')
+        if 'x-fast-farmer-version' in self.headers and 'x-chia-version' in self.headers:
+            user_agent = self.headers.get('x-chia-version') + '.ff' + self.headers.get('x-fast-farmer-version')
         elif 'user-agent' in self.headers:
             user_agent = self.headers.get('user-agent')
         else:
-            logger.debug('Cannot get chia version, no x-chia-version or user-agent headers')
+            logger.debug(f'Cannot get chia version, no more headers available: {self.headers}')
             return
 
         try:
