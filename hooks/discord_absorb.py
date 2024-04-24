@@ -5,6 +5,7 @@ import json
 import os
 import sys
 import yaml
+import datetime
 
 
 def load_config():
@@ -26,12 +27,20 @@ async def discord_blocks_farmed(absorbeb_coins):
         )
         farmers.add(farmer_record['name'] or farmer_record['launcher_id'])
 
-    coins_blocks = ', '.join([f'#{i}' for i in farmed_heights])
+    coins_blocks = ', '.join([f'[#{i}](https://xchscan.com/blocks/{i})' for i in farmed_heights])
     farmed_by = ', '.join(farmers)
 
     async with aiohttp.request('POST', config['hook_discord_absorb']['url'], json={
-        'content': f"New block(s) farmed! {coins_blocks}. Farmed by {farmed_by}.",
         'username': config['hook_discord_absorb']['username'],
+        'embeds': [{
+            'title': '🏆 New block(s) farmed!',
+            'description': f'New block(s) farmed! {coins_blocks}. Farmed by {farmed_by}.',
+            'color': 2522040,
+            'footer': {
+                'text': 'Powered by pool.energy'
+            },
+            'timestamp': datetime.datetime.now(datetime.UTC)
+        }]
     }) as r:
         pass
 
