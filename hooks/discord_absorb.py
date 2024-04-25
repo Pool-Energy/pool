@@ -39,7 +39,7 @@ async def discord_blocks_farmed(absorbeb_coins):
             'footer': {
                 'text': 'Powered by pool.energy'
             },
-            'timestamp': datetime.datetime.now(datetime.UTC)
+            'timestamp': str(datetime.datetime.now(datetime.UTC))
         }]
     }) as r:
         pass
