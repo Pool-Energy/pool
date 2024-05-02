@@ -396,13 +396,8 @@ class PgsqlPoolStore(object):
         async with self.pool.acquire() as conn:
             async with conn.cursor() as cursor:
                 await cursor.execute(
-                    "INSERT INTO partial ("
-                    " launcher_id, timestamp, difficulty, error, harvester_id, plot_id,"
-                    " chia_version, remote, pool_host"
-                    ") VALUES ("
-                    " %s,          %s,        %s,         %s,    %s,           %s,"
-                    " %s,           %s,     %s"
-                    ")",
+                    "INSERT INTO partial (launcher_id, timestamp, difficulty, error, harvester_id, plot_id, chia_version, remote, pool_host)"
+                    "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)",
                     (
                         partial_payload.launcher_id.hex(),
                         timestamp,

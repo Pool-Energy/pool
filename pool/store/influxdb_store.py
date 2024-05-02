@@ -5,6 +5,7 @@ import textwrap
 from typing import Dict, Optional
 
 from chia.protocols.pool_protocol import PostPartialPayload
+from chia.types.blockchain_format.proof_of_space import get_plot_id
 from chia.types.blockchain_format.sized_bytes import bytes32
 from chia.types.coin_record import CoinRecord
 from chia.util.ints import uint64
@@ -14,6 +15,7 @@ from influxdb_client.client.influxdb_client_async import InfluxDBClientAsync
 
 from ..record import FarmerRecord
 from ..task import task_exception
+from ..util import RequestMetadata
 
 logger = logging.getLogger('influxdb_store')
 
@@ -58,14 +60,18 @@ class InfluxdbStore(object):
     async def add_partial(
         self,
         partial_payload: PostPartialPayload,
+        req_metadata: Optional[RequestMetadata],
         timestamp: uint64,
         difficulty: uint64,
         error: Optional[str] = None,
     ) -> None:
-        # Default precision is nanoseconds
         p = Point('partial').time(int(timestamp) * 1000000000).tag(
             'launcher', partial_payload.launcher_id.hex()).tag(
             'harvester', partial_payload.harvester_id.hex()).tag(
+            'plot', get_plot_id(partial_payload.proof_of_space).hex()).tag(
+            'version', (str((req_metadata.get_chia_version() or ''))[:20] or None) if req_metadata else None).tag(
+            'host', req_metadata.get_host() if req_metadata else None).tag(
+            'remote', req_metadata.get_remote() if req_metadata else None).tag(
             'error', error).field(
             'difficulty', int(difficulty))
         return await self.write_api.write(bucket=self.bucket_partial, record=p)
@@ -87,11 +93,13 @@ class InfluxdbStore(object):
         estimate_to_win: int,
     ) -> None:
 
-        p = Point('block').field('timestamp', int(reward_record.timestamp)).field(
-            'farmed_height', int.from_bytes(bytes(reward_record.coin.parent_coin_info)[16:], 'big')
-        ).field('confirmed_block_index', int(reward_record.confirmed_block_index)).field(
+        p = Point('block').field(
+            'timestamp', int(reward_record.timestamp)).field(
+            'farmed_height', int.from_bytes(bytes(reward_record.coin.parent_coin_info)[16:], 'big')).field(
+            'confirmed_block_index', int(reward_record.confirmed_block_index)).field(
             'amount', int(reward_record.coin.amount)).field(
-            'farmed_by', farmer.launcher_id.hex()).field('pool_space', pool_space)
+            'farmed_by', farmer.launcher_id.hex()).field(
+            'pool_space', pool_space)
         return await self.write_api.write(bucket=self.bucket, record=p)
 
     async def get_launcher_sizes(self, launcher_id: str, start: str):

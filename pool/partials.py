@@ -385,9 +385,9 @@ class Partials(object):
 
         # Add to database
         await self.store.add_partial(partial_payload, req_metadata, timestamp, difficulty, error)
-        asyncio.create_task(
-            self.store_ts.add_partial(partial_payload, timestamp, difficulty, error)
-        )
+
+        # Add to timeseries database
+        asyncio.create_task(self.store_ts.add_partial(partial_payload, req_metadata, timestamp, difficulty, error))
 
         # Add to the cache and compute the estimated farm size if a successful partial
         if error is None:
