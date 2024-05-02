@@ -68,17 +68,18 @@ class InfluxdbStore(object):
         p = Point('partial').time(int(timestamp) * 1000000000).tag(
             'launcher', partial_payload.launcher_id.hex()).tag(
             'harvester', partial_payload.harvester_id.hex()).tag(
-            'plot', get_plot_id(partial_payload.proof_of_space).hex()).tag(
             'version', (str((req_metadata.get_chia_version() or ''))[:20] or None) if req_metadata else None).tag(
-            'host', req_metadata.get_host() if req_metadata else None).tag(
-            'remote', req_metadata.get_remote() if req_metadata else None).tag(
             'error', error).field(
             'difficulty', int(difficulty))
         return await self.write_api.write(bucket=self.bucket_partial, record=p)
 
     async def add_xchprice(self, xch_price: Dict):
-        p = Point('xchprice').field('usd', xch_price['usd']).field('eur', xch_price['eur']).field(
-            'gbp', xch_price['gbp']).field('btc', xch_price['btc']).field('eth', xch_price['eth'])
+        p = Point('xchprice').field(
+            'usd', xch_price['usd']).field(
+            'eur', xch_price['eur']).field(
+            'gbp', xch_price['gbp']).field(
+            'btc', xch_price['btc']).field(
+            'eth', xch_price['eth'])
         return await self.write_api.write(bucket=self.bucket, record=p)
 
     async def add_block(
