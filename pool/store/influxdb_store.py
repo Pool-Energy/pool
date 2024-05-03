@@ -5,7 +5,6 @@ import textwrap
 from typing import Dict, Optional
 
 from chia.protocols.pool_protocol import PostPartialPayload
-from chia.types.blockchain_format.proof_of_space import get_plot_id
 from chia.types.blockchain_format.sized_bytes import bytes32
 from chia.types.coin_record import CoinRecord
 from chia.util.ints import uint64
@@ -15,7 +14,6 @@ from influxdb_client.client.influxdb_client_async import InfluxDBClientAsync
 
 from ..record import FarmerRecord
 from ..task import task_exception
-from ..util import RequestMetadata
 
 logger = logging.getLogger('influxdb_store')
 
@@ -60,7 +58,6 @@ class InfluxdbStore(object):
     async def add_partial(
         self,
         partial_payload: PostPartialPayload,
-        req_metadata: Optional[RequestMetadata],
         timestamp: uint64,
         difficulty: uint64,
         error: Optional[str] = None,
@@ -68,7 +65,6 @@ class InfluxdbStore(object):
         p = Point('partial').time(int(timestamp) * 1000000000).tag(
             'launcher', partial_payload.launcher_id.hex()).tag(
             'harvester', partial_payload.harvester_id.hex()).tag(
-            'version', (str((req_metadata.get_chia_version() or ''))[:20] or None) if req_metadata else None).tag(
             'error', error).field(
             'difficulty', int(difficulty))
         return await self.write_api.write(bucket=self.bucket_partial, record=p)
