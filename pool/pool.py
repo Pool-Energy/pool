@@ -1711,6 +1711,7 @@ class Pool:
         partial_time_taken = 999.999
 
         if farmer_record.launcher_id.hex() in self.launchers_banned:
+            logger.warning(f"Farmer banned from the pool: {self.launchers_banned[farmer_record.launcher_id.hex()]}.")
             await self.partials.add_partial(
                 partial.payload,
                 req_metadata,
@@ -1752,9 +1753,13 @@ class Pool:
                 f"Invalid pool contract puzzle hash {partial.payload.proof_of_space.pool_contract_puzzle_hash}",
             )
 
-        # No version means <= 1.8
-        if not req_metadata or not (chia_version := Version('.'.join(req_metadata.get_chia_version().split('.', 3)[:3]))):
-            if not self.testnet and not (chia_version and chia_version.major >= 1 and chia_version.minor >= 8):
+        # Define chia version
+        chia_version_using_version = '.'.join(req_metadata.get_chia_version().split('.', 3)[:3])
+        chia_version_refuse_before = '1.8.0'
+
+        # Refuse chia version <= 1.8.0
+        if not req_metadata or not chia_version_using_version:
+            if not self.testnet and Version(chia_version_using_version) <= Version(chia_version_refuse_before):
                 await self.partials.add_partial(
                     partial.payload,
                     req_metadata,
@@ -1765,13 +1770,14 @@ class Pool:
                 )
                 return error_dict(
                     PoolErrorCode.REQUEST_FAILED,
-                    "Invalid version, make sure to use client version 1.8.0 or higher.",
+                    f"Sorry invalid client version. {chia_version_using_version} is not supported. "
+                    f"Make sure to use client version {chia_version_refuse_before} or higher.",
                 )
 
         response = await self.get_signage_point_or_eos(partial)
         if response is None:
-            # Try again after 30 seconds in case we just didn't yet receive the signage point
-            await asyncio.sleep(30)
+            # Try again after 10 seconds in case we just didn't yet receive the signage point
+            await asyncio.sleep(10)
             response = await self.get_signage_point_or_eos(partial)
 
         if response is None or response["reverted"]:
@@ -1789,7 +1795,7 @@ class Pool:
 
         node_time_received_sp = response["time_received"]
         partial_time_taken = time_received_partial - node_time_received_sp
-        logger.debug(f"Partial time taken: {partial_time_taken} second(s).")
+        logger.debug(f"Processing partial time taken in {partial_time_taken} second(s).")
 
         signage_point: Optional[SignagePoint] = response.get("signage_point", None)
         end_of_sub_slot: Optional[EndOfSubSlotBundle] = response.get("eos", None)
