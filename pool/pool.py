@@ -1758,8 +1758,8 @@ class Pool:
         chia_version_refuse_before = '1.8.0'
 
         # Refuse chia version <= 1.8.0
-        if not req_metadata or not chia_version_using_version:
-            if not self.testnet and Version(chia_version_using_version) <= Version(chia_version_refuse_before):
+        if not req_metadata and not self.testnet and chia_version_using_version and chia_version_refuse_before:
+            if Version(chia_version_using_version) <= Version(chia_version_refuse_before):
                 await self.partials.add_partial(
                     partial.payload,
                     req_metadata,
@@ -1770,7 +1770,7 @@ class Pool:
                 )
                 return error_dict(
                     PoolErrorCode.REQUEST_FAILED,
-                    f"Sorry invalid client version. {chia_version_using_version} is not supported. "
+                    f"Sorry invalid client version, {chia_version_using_version} is not supported. "
                     f"Make sure to use client version {chia_version_refuse_before} or higher.",
                 )
 
