@@ -16,19 +16,22 @@ def load_config():
 async def discord_blocks_farmed(absorbeb_coins):
     config = load_config()
     absorbeb_coins = json.loads(absorbeb_coins.strip())
-
     farmed_heights = []
-    farmers = set()
+    farmer = None
+    farmers = []
+
     for coin, farmer_record in absorbeb_coins:
         farmed_heights.append(
             str(int.from_bytes(bytes.fromhex(
                 coin['coin']['parent_coin_info'][2:])[16:], 'big'
             ))
         )
-        farmers.add(farmer_record['name'] or farmer_record['launcher_id'])
+        farmer['name'] = farmer_record['name'] or farmer_record['launcher_id']
+        farmer['link'] = farmer_record['launcher_id']
+        farmers.append(farmer)
 
     coins_blocks = ', '.join([f'[#{i}](https://xchscan.com/blocks/{i})' for i in farmed_heights])
-    farmed_by = ', '.join(farmers)
+    farmed_by = ', '.join([f'[{f["name"]}](https://pool.energy/farmer/{f["link"]})' for f in farmers])
 
     async with aiohttp.request('POST', config['hook_discord_absorb']['url'], json={
         'username': config['hook_discord_absorb']['username'],
