@@ -233,7 +233,9 @@ class PoolServer:
         )
 
         plogger.info(
-            f"post_partial response {post_partial_response}, time: {time.time() - start_time} "
+            f"post_partial response: {post_partial_response}, "
+            f"size: k{request['payload']['proof_of_space']['size']}, "
+            f"time: {time.time() - start_time}, "
             f"launcher_id: {request['payload']['launcher_id']}"
         )
         return obj_to_response(post_partial_response)

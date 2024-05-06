@@ -217,6 +217,24 @@ class PgsqlPoolStore(object):
             "UPDATE farmer SET difficulty=%s WHERE launcher_id=%s", (difficulty, launcher_id.hex())
         )
 
+    async def update_harvester(
+        self,
+        partial_payload: PostPartialPayload,
+        req_metadata: Optional[RequestMetadata],
+    ) -> None:
+        async with self.pool.acquire() as conn:
+            async with conn.cursor() as cursor:
+                await self._execute(
+                    "INSERT INTO harvester (launcher, harvester, version) VALUES (%s, %s, %s) "
+                    "ON CONFLICT (launcher, harvester) DO UPDATE SET version=%s",
+                    (
+                        partial_payload.launcher_id.hex(),
+                        partial_payload.harvester_id.hex(),
+                        (str((req_metadata.get_chia_version() or ''))[:20] or None) if req_metadata else None,
+                        (str((req_metadata.get_chia_version() or ''))[:20] or None) if req_metadata else None,
+                    )
+                )
+
     async def update_singleton(
         self,
         farmer_record: FarmerRecord,
@@ -354,11 +372,8 @@ class PgsqlPoolStore(object):
         points_received: uint64,
     ) -> None:
         await self._execute(
-            "INSERT INTO pending_partial ("
-            "partial, req_metadata, time_received, points_received"
-            ") VALUES ("
-            "%s,      %s,           %s,            %s"
-            ")",
+            "INSERT INTO pending_partial (partial, req_metadata, time_received, points_received) "
+            "VALUES (%s, %s, %s, %s)",
             (
                 json.dumps(partial.to_json_dict()),
                 json.dumps(req_metadata.to_json_dict()),
@@ -391,13 +406,18 @@ class PgsqlPoolStore(object):
         req_metadata: Optional[RequestMetadata],
         timestamp: uint64,
         difficulty: uint64,
+        time_taken: Optional[float] = 999.999,
         error: Optional[str] = None,
     ) -> None:
+        logger.debug(
+            f"Adding partial for {partial_payload.launcher_id.hex()} "
+            f"with difficulty {difficulty} in {time_taken} seconds."
+        )
         async with self.pool.acquire() as conn:
             async with conn.cursor() as cursor:
                 await cursor.execute(
-                    "INSERT INTO partial (launcher_id, timestamp, difficulty, error, harvester_id, plot_id, chia_version, remote, pool_host)"
-                    "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)",
+                    "INSERT INTO partial (launcher_id, timestamp, difficulty, error, harvester_id, plot_id, chia_version, remote, pool_host, time_taken)"
+                    "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
                     (
                         partial_payload.launcher_id.hex(),
                         timestamp,
@@ -408,6 +428,7 @@ class PgsqlPoolStore(object):
                         (str((req_metadata.get_chia_version() or ''))[:20] or None) if req_metadata else None,
                         req_metadata.get_remote() if req_metadata else None,
                         req_metadata.get_host() if req_metadata else None,
+                        time_taken,
                     ),
                 )
 

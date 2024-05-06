@@ -1299,11 +1299,23 @@ class Pool:
     ) -> None:
         try:
             response = await self.get_signage_point_or_eos(partial)
+
+            if response is not None:
+                node_time_received_sp = response["time_received"]
+                partial_time_taken = time_received - node_time_received_sp
+            else:
+                partial_time_taken = 999.999
+
             if response is None or response["reverted"]:
                 if partial.payload.end_of_sub_slot:
                     plogger.info(f"Partial EOS reverted: {partial.payload.sp_hash}")
                     await self.partials.add_partial(
-                        partial.payload, req_metadata, time_received, points_received, 'EOS_REVERTED'
+                        partial.payload,
+                        req_metadata,
+                        time_received,
+                        points_received,
+                        partial_time_taken,
+                        'EOS_REVERTED'
                     )
                 else:
                     plogger.info(f"Partial SP reverted: {partial.payload.sp_hash}")
@@ -1312,6 +1324,7 @@ class Pool:
                         req_metadata,
                         time_received,
                         points_received,
+                        partial_time_taken,
                         'SP_REVERTED',
                     )
                 return
@@ -1320,16 +1333,13 @@ class Pool:
             # blockchain. We need to check for double submissions.
             pos_hash = partial.payload.proof_of_space.get_hash()
             if self.recent_points_added.get(pos_hash):
-                plogger.info(
-                    'Double signage point submitted for pos_hash %r, launcher id %r',
-                    pos_hash,
-                    partial.payload.launcher_id,
-                )
+                plogger.info(f"Double signage point submitted for pos_hash {pos_hash}, launcher id {partial.payload.launcher_id}")
                 await self.partials.add_partial(
                     partial.payload,
                     req_metadata,
                     time_received,
                     points_received,
+                    partial_time_taken,
                     'DOUBLE_SIGNAGE_POINT',
                 )
                 return
@@ -1347,6 +1357,7 @@ class Pool:
                     req_metadata,
                     time_received,
                     points_received,
+                    partial_time_taken,
                     'INVALID_SINGLETON',
                 )
                 return
@@ -1359,6 +1370,7 @@ class Pool:
                     req_metadata,
                     time_received,
                     points_received,
+                    partial_time_taken,
                     'SINGLETON_NOT_POOL',
                 )
                 farmer_record: Optional[FarmerRecord] = await self.store.get_farmer_record(partial.payload.launcher_id)
@@ -1392,12 +1404,13 @@ class Pool:
                 )
 
                 if farmer_record.is_pool_member:
+                    plogger.info(f"Farmer {farmer_record.launcher_id} updated points to: {farmer_record.points + points_received}")
                     await self.partials.add_partial(
-                        partial.payload, req_metadata, time_received, points_received,
-                    )
-                    plogger.info(
-                        f"Farmer {farmer_record.launcher_id} updated points to: "
-                        f"{farmer_record.points + points_received}"
+                        partial.payload,
+                        req_metadata,
+                        time_received,
+                        points_received,
+                        partial_time_taken
                     )
         except Exception:
             self.log.error('Exception in confirming partial', exc_info=True)
@@ -1695,6 +1708,7 @@ class Pool:
         pk2: G1Element = farmer_record.authentication_public_key
         valid_sig = AugSchemeMPL.aggregate_verify([pk1, pk2], [message, message], partial.aggregate_signature)
         peak_height = self.blockchain_state['peak'].height
+        partial_time_taken = 999.999
 
         if farmer_record.launcher_id.hex() in self.launchers_banned:
             await self.partials.add_partial(
@@ -1702,12 +1716,12 @@ class Pool:
                 req_metadata,
                 time_received_partial,
                 farmer_record.difficulty,
+                partial_time_taken,
                 'LAUNCHER_BANNED',
             )
             return error_dict(
                 PoolErrorCode.NOT_FOUND,
-                'Farmer has been banned from the pool: '
-                f'{self.launchers_banned[farmer_record.launcher_id.hex()]}.',
+                f"Farmer has been banned from the pool: {self.launchers_banned[farmer_record.launcher_id.hex()]}.",
             )
 
         if not valid_sig:
@@ -1716,6 +1730,7 @@ class Pool:
                 req_metadata,
                 time_received_partial,
                 farmer_record.difficulty,
+                partial_time_taken,
                 'INVALID_AGG_SIGNATURE',
             )
             return error_dict(
@@ -1729,6 +1744,7 @@ class Pool:
                 req_metadata,
                 time_received_partial,
                 farmer_record.difficulty,
+                partial_time_taken,
                 'INVALID_POOL_CONTRACT',
             )
             return error_dict(
@@ -1744,6 +1760,7 @@ class Pool:
                     req_metadata,
                     time_received_partial,
                     farmer_record.difficulty,
+                    partial_time_taken,
                     'INVALID_VERSION',
                 )
                 return error_dict(
@@ -1763,27 +1780,32 @@ class Pool:
                 req_metadata,
                 time_received_partial,
                 farmer_record.difficulty,
+                partial_time_taken,
                 'INVALID_SIGNAGE_OR_EOS',
             )
             return error_dict(
                 PoolErrorCode.NOT_FOUND, f"Did not find signage point or EOS {partial.payload.sp_hash}, {response}"
             )
+
         node_time_received_sp = response["time_received"]
+        partial_time_taken = time_received_partial - node_time_received_sp
+        logger.debug(f"Partial time taken: {partial_time_taken} second(s).")
 
         signage_point: Optional[SignagePoint] = response.get("signage_point", None)
         end_of_sub_slot: Optional[EndOfSubSlotBundle] = response.get("eos", None)
 
-        if time_received_partial - node_time_received_sp > self.partial_time_limit:
+        if partial_time_taken > self.partial_time_limit:
             await self.partials.add_partial(
                 partial.payload,
                 req_metadata,
                 time_received_partial,
                 farmer_record.difficulty,
+                partial_time_taken,
                 'INVALID_TOO_LATE',
             )
             return error_dict(
                 PoolErrorCode.TOO_LATE,
-                f"Received partial in {time_received_partial - node_time_received_sp}. "
+                f"Received partial in {partial_time_taken}. "
                 f"Make sure your proof of space lookups are fast, and network connectivity is good."
                 f"Response must happen in less than {self.partial_time_limit} seconds. NAS or network"
                 f" farming can be an issue",
@@ -1797,7 +1819,10 @@ class Pool:
 
         # Note the use of peak_height + 1. We Are evaluating the suitability for the next block
         quality_string: Optional[bytes32] = verify_and_get_quality_string(
-            partial.payload.proof_of_space, self.constants, challenge_hash, partial.payload.sp_hash,
+            partial.payload.proof_of_space,
+            self.constants,
+            challenge_hash,
+            partial.payload.sp_hash,
             height=uint32(peak_height + 1)
         )
         if quality_string is None:
@@ -1806,9 +1831,13 @@ class Pool:
                 req_metadata,
                 time_received_partial,
                 farmer_record.difficulty,
+                partial_time_taken,
                 'INVALID_PROOF_OF_SPACE',
             )
-            return error_dict(PoolErrorCode.INVALID_PROOF, f"Invalid proof of space {partial.payload.sp_hash}")
+            return error_dict(
+                PoolErrorCode.INVALID_PROOF,
+                f"Invalid proof of space {partial.payload.sp_hash}"
+            )
 
         current_difficulty = farmer_record.difficulty
         required_iters: uint64 = calculate_iterations_quality(
@@ -1825,6 +1854,7 @@ class Pool:
                 req_metadata,
                 time_received_partial,
                 farmer_record.difficulty,
+                partial_time_taken,
                 'PROOF_NOT_GOOD_ENOUGH',
             )
             return error_dict(
@@ -1833,7 +1863,12 @@ class Pool:
             )
 
         await self.pending_point_partials.put(
-            (partial, req_metadata, time_received_partial, current_difficulty)
+            (
+                partial,
+                req_metadata,
+                time_received_partial,
+                current_difficulty
+            )
         )
 
         try:

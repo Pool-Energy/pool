@@ -380,18 +380,45 @@ class Partials(object):
         req_metadata: Optional[RequestMetadata],
         timestamp: uint64,
         difficulty: uint64,
+        time_taken: Optional[float] = 999.999,
         error: Optional[str] = None,
     ) -> None:
 
-        # Add to database
-        await self.store.add_partial(partial_payload, req_metadata, timestamp, difficulty, error)
+        # Add partial into database
+        await self.store.add_partial(
+            partial_payload,
+            req_metadata,
+            timestamp,
+            difficulty,
+            time_taken,
+            error
+        )
 
-        # Add to timeseries database
-        asyncio.create_task(self.store_ts.add_partial(partial_payload, timestamp, difficulty, error))
+        # Add partial into timeseries database
+        asyncio.create_task(
+            self.store_ts.add_partial(
+                partial_payload,
+                timestamp,
+                difficulty,
+                error
+            )
+        )
+
+        # Update harvester version
+        asyncio.create_task(
+            self.store.update_harvester(
+                partial_payload,
+                req_metadata
+            )
+        )
 
         # Add to the cache and compute the estimated farm size if a successful partial
         if error is None:
-            await self.cache.add(partial_payload.launcher_id.hex(), timestamp, difficulty)
+            await self.cache.add(
+                partial_payload.launcher_id.hex(),
+                timestamp,
+                difficulty
+            )
 
     async def get_recent_partials(self, launcher_id: bytes32, number_of_partials: int):
         """
