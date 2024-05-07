@@ -232,16 +232,20 @@ class PoolServer:
             uint64(int(start_time)),
         )
 
+        plogger.debug(
+            f"post_partial request: {self.post_metadata_from_request(request_obj)}"
+        )
+
         plogger.info(
             f"post_partial response: {post_partial_response}, "
             f"size: k{request['payload']['proof_of_space']['size']}, "
             f"time: {time.time() - start_time}, "
             f"launcher_id: {request['payload']['launcher_id']}"
         )
+
         return obj_to_response(post_partial_response)
 
     async def get_login(self, request_obj) -> web.Response:
-        # Redirect to website
         raise aiohttp.web.HTTPFound(self.pool.pool_config["login_url"] + '?' + request_obj.url.query_string)
 
     async def switch_node(self):
