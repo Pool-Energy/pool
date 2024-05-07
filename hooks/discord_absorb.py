@@ -17,7 +17,6 @@ async def discord_blocks_farmed(absorbeb_coins):
     config = load_config()
     absorbeb_coins = json.loads(absorbeb_coins.strip())
     farmed_heights = []
-    farmer = {}
     farmers = []
 
     for coin, farmer_record in absorbeb_coins:
@@ -26,13 +25,10 @@ async def discord_blocks_farmed(absorbeb_coins):
                 coin['coin']['parent_coin_info'][2:])[16:], 'big'
             ))
         )
-        farmer['name'] = farmer_record['name'] or farmer_record['launcher_id']
-        farmer['link'] = farmer_record['launcher_id']
-        farmers.append(farmer)
-        farmer.clear()
+        farmers.append(farmer_record)
 
-    coins_blocks = ', '.join([f'[#{i}](https://xchscan.com/blocks/{i})' for i in farmed_heights])
-    farmed_by = ', '.join([f'[{f["name"]}](https://pool.energy/farmer/{f["link"]})' for f in farmers])
+    coins_blocks = ", ".join([f"[#{i}](https://xchscan.com/blocks/{i})" for i in farmed_heights])
+    farmed_by = ", ".join([f"[{f['name'] or f['launcher_id']}](https://pool.energy/farmer/{f['launcher_id']})" for f in farmers])
 
     async with aiohttp.request('POST', config['hook_discord_absorb']['url'], json={
         'username': config['hook_discord_absorb']['username'],
