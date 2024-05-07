@@ -1758,6 +1758,10 @@ class Pool:
         chia_version_refuse_before = '1.8.0'
 
         # Refuse chia version <= 1.8.0
+        logger.warning(f"debug chia_version(): self.testnet: {self.testnet}")
+        logger.warning(f"debug chia_version(): req_metadata: {req_metadata}")
+        logger.warning(f"debug chia_version(): chia_version_current_using: {chia_version_current_using}")
+        logger.warning(f"debug chia_version(): chia_version_refuse_before: {chia_version_refuse_before}")
         if not self.testnet and req_metadata and chia_version_current_using and chia_version_refuse_before:
             if Version(chia_version_current_using) <= Version(chia_version_refuse_before):
                 await self.partials.add_partial(
