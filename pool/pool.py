@@ -895,7 +895,9 @@ class Pool:
                             bytes(x[0].coin.parent_coin_info)[16:], 'big'
                         ),
                     ):
-                        self.log.info('New coin farmed by %r', farmer.launcher_id.hex())
+                        self.log.info(
+                            f"Congrats! Block {int.from_bytes(bytes(reward.coin.parent_coin_info)[16:], 'big'),} farmed by {farmer.launcher_id.hex()}"
+                        )
 
                         launcher_etw = await self.get_etw(farmer.estimated_size)
                         last_launcher_etw = farmer.last_block_etw or -1
@@ -915,6 +917,17 @@ class Pool:
 
                         hook_args.append((reward, farmer))
 
+                        # if enabled, check gigahorse fee from farmer puzzle hash (false by default)
+                        gigahorse_fee = False
+                        if self.pool_config['fee']['gigahorse']['check_enabled']:
+                            farmer_puzzle_hash = await self.node_rpc_client.get_block_record_by_height(
+                                int.from_bytes(bytes(reward.coin.parent_coin_info)[16:], 'big'),
+                            )['block_record']['farmer_puzzle_hash']
+                            if farmer_puzzle_hash == self.pool_config['fee']['gigahorse']['farmer_puzzle_hash']:
+                                self.log.info(f'Block {reward.name.hex()}, farmer reward has been taken by Gigahorse fee')
+                                gigahorse_fee = True
+
+                        # insert block into database
                         await self.store.add_block(
                             reward,
                             0,
@@ -924,7 +937,10 @@ class Pool:
                             launcher_effort,
                             pool_size,
                             pool_etw,
+                            gigahorse_fee,
                         )
+
+                        # insert block into timeseries
                         await self.store_ts.add_block(
                             reward,
                             0,

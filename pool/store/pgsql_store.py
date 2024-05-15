@@ -491,6 +491,7 @@ class PgsqlPoolStore(object):
         launcher_effort: int,
         pool_space: int,
         estimate_to_win: int,
+        gigahorse_fee: bool,
     ) -> None:
         last_block = await self._execute(
             "SELECT estimate_to_win, timestamp FROM block ORDER BY -farmed_height LIMIT 1"
@@ -511,10 +512,8 @@ class PgsqlPoolStore(object):
 
         await self._execute(
             "INSERT INTO block ("
-            " name, singleton, timestamp, farmed_height, confirmed_block_index, puzzle_hash, amount, farmed_by_id, estimate_to_win, pool_space, launcher_etw, launcher_effort, luck, absorb_fee, xch_price"
-            ") VALUES ("
-            " %s,   %s,        %s,        %s,            %s,                    %s,          %s,     %s,           %s,              %s,         %s,           %s,              %s,   %s,         %s"
-            ")",
+            "name, singleton, timestamp, farmed_height, confirmed_block_index, puzzle_hash, amount, farmed_by_id, estimate_to_win, pool_space, launcher_etw, launcher_effort, luck, absorb_fee, xch_price, gigahorse_fee"
+            ") VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
             (
                 reward_record.name.hex(),
                 singleton.hex(),
@@ -531,6 +530,7 @@ class PgsqlPoolStore(object):
                 luck,
                 absorb_fee,
                 json.dumps(globalinfo['xch_current_price']) if globalinfo else None,
+                gigahorse_fee,
             )
         )
 
