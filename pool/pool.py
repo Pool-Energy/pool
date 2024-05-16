@@ -923,7 +923,7 @@ class Pool:
                             farmer_puzzle_hash = await self.node_rpc_client.get_block_record_by_height(
                                 int.from_bytes(bytes(reward.coin.parent_coin_info)[16:], 'big')
                             )
-                            if farmer_puzzle_hash.block_record.farmer_puzzle_hash == self.pool_config['fee']['gigahorse']['farmer_puzzle_hash']:
+                            if farmer_puzzle_hash is not None and farmer_puzzle_hash.farmer_puzzle_hash == self.pool_config['fee']['gigahorse']['farmer_puzzle_hash']:
                                 self.log.info(f'Block {reward.name.hex()}, farmer reward has been taken by Gigahorse fee')
                                 gigahorse_fee = True
 
