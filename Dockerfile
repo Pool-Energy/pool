@@ -25,6 +25,6 @@ COPY ./pool /root/pool/pool/
 COPY ./hooks /root/pool/hooks/
 COPY ./tools /root/pool/tools/
 
-COPY ./docker/start.sh /root/
+COPY ./docker/entrypoint.sh /entrypoint.sh
 
-CMD ["bash", "/root/start.sh"]
+CMD ["bash", "/entrypoint.sh"]
