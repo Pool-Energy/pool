@@ -26,7 +26,7 @@ async def discord_payment(payments):
         'username': config['hook_discord_payment']['username'],
         'embeds': [{
             'title': '💵 Payments sent!',
-            'description': f'Total amount: {amount / 10 ** 12} XCH.',
+            'description': f'Total amount: {amount / 10 ** 12} XCH',
             'color': 3319634,
             'footer': {
                 'text': 'Powered by pool.energy'
@@ -38,8 +38,8 @@ async def discord_payment(payments):
 
 
 if __name__ == '__main__':
-    if sys.argv[1] != 'PAYMENT':
-        print('Not an PAYMENT hook')
+    if sys.argv[1] != 'PAYMENTS':
+        print('Not an PAYMENTS hook')
         sys.exit(1)
     asyncio.run(discord_payment(
         *sys.argv[2:],
