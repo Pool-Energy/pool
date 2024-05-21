@@ -924,12 +924,12 @@ class Pool:
                                 int.from_bytes(bytes(reward.coin.parent_coin_info)[16:], 'big')
                             )
                             if farmer_puzzle_hash is None:
-                                self.log.info(f'Block {reward.name.hex()}, unknown farmer reward')
+                                self.log.info(f'Block {int.from_bytes(bytes(reward.coin.parent_coin_info)[16:], 'big')}, unknown farmer reward')
                             elif farmer_puzzle_hash.farmer_puzzle_hash == self.pool_config['fee']['gigahorse']['farmer_puzzle_hash']:
-                                self.log.info(f'Block {reward.name.hex()}, farmer reward has been taken by {farmer_puzzle_hash.farmer_puzzle_hash} (Gigahorse fee)')
+                                self.log.info(f'Block {int.from_bytes(bytes(reward.coin.parent_coin_info)[16:], 'big')}, farmer reward has been taken by {farmer_puzzle_hash.farmer_puzzle_hash} (Gigahorse fee)')
                                 gigahorse_fee = True
                             else:
-                                self.log.info(f'Block {reward.name.hex()}, farmer reward has been taken by {farmer_puzzle_hash.farmer_puzzle_hash}')
+                                self.log.info(f'Block {int.from_bytes(bytes(reward.coin.parent_coin_info)[16:], 'big')}, farmer reward has been taken by {farmer_puzzle_hash.farmer_puzzle_hash}')
 
                         # insert block into database
                         await self.store.add_block(
@@ -1781,7 +1781,7 @@ class Pool:
         chia_version_current_using: str = '.'.join(req_metadata.get_chia_version().split('.', 3)[:3])
         chia_version_refuse_before: str = self.pool_config["launchers_min_version"] if "launchers_min_version" in self.pool_config else None
 
-        # Refuse chia version <= 1.8.0
+        # Verify chia version and refuse partials if the version is not supported by pool
         if not self.testnet and req_metadata and chia_version_current_using and chia_version_refuse_before:
             if Version(chia_version_current_using) <= Version(chia_version_refuse_before):
                 await self.partials.add_partial(
@@ -1794,7 +1794,7 @@ class Pool:
                 )
                 return error_dict(
                     PoolErrorCode.REQUEST_FAILED,
-                    f"Sorry invalid client version, {chia_version_current_using} is not supported. "
+                    f"Invalid client version, {chia_version_current_using} is not supported by pool. "
                     f"Make sure to use client version {chia_version_refuse_before} or higher.",
                 )
 
