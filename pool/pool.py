@@ -925,7 +925,7 @@ class Pool:
                             )
                             if farmer_puzzle_hash is None:
                                 self.log.info(f"Block {int.from_bytes(bytes(reward.coin.parent_coin_info)[16:], 'big')}, unknown farmer reward")
-                            elif farmer_puzzle_hash.farmer_puzzle_hash == self.pool_config['fee']['gigahorse']['farmer_puzzle_hash']:
+                            elif str(farmer_puzzle_hash.farmer_puzzle_hash) == str(self.pool_config['fee']['gigahorse']['farmer_puzzle_hash']):
                                 self.log.info(f"Block {int.from_bytes(bytes(reward.coin.parent_coin_info)[16:], 'big')}, farmer reward has been taken by {farmer_puzzle_hash.farmer_puzzle_hash} (Gigahorse fee)")
                                 gigahorse_fee = True
                             else:
