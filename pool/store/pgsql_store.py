@@ -411,13 +411,14 @@ class PgsqlPoolStore(object):
     ) -> None:
         logger.debug(
             f"Adding partial for {partial_payload.launcher_id.hex()} "
-            f"with difficulty {difficulty} in {time_taken} seconds."
+            f"(k{partial_payload.proof_of_space.size}) with "
+            f"difficulty {difficulty} in {time_taken} seconds."
         )
         async with self.pool.acquire() as conn:
             async with conn.cursor() as cursor:
                 await cursor.execute(
-                    "INSERT INTO partial (launcher_id, timestamp, difficulty, error, harvester_id, plot_id, chia_version, remote, pool_host, time_taken)"
-                    "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
+                    "INSERT INTO partial (launcher_id, timestamp, difficulty, error, harvester_id, plot_id, chia_version, remote, pool_host, time_taken, plot_size)"
+                    "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
                     (
                         partial_payload.launcher_id.hex(),
                         timestamp,
@@ -429,6 +430,7 @@ class PgsqlPoolStore(object):
                         req_metadata.get_remote() if req_metadata else None,
                         req_metadata.get_host() if req_metadata else None,
                         time_taken,
+                        partial_payload.proof_of_space.size,
                     ),
                 )
 
