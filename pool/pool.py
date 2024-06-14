@@ -1012,6 +1012,7 @@ class Pool:
                         self.log.info(
                             'Remainings: %r', share['remainings'] / (10 ** 12),
                         )
+
                         # If more than 0.00001 was left behind there is something off
                         if share['remainings'] > 10 ** 7:
                             self.log.error('Remainings too high, aborting.')
