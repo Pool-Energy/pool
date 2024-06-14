@@ -991,12 +991,12 @@ class Pool:
 
                         if share['pool_fee_amount'] < 0:
                             raise RuntimeError(
-                                f'Pool fee amount is negative: {share["pool_fee_amount"]  / (10 ** 12)}'
+                                f'Pool fee amount is negative: {share["pool_fee_amount"] / (10 ** 12)}'
                             )
 
                         if share['referral_fee_amount'] < 0:
                             raise RuntimeError(
-                                f'Referral amount is negative: {share["referral_fee_amount"]  / (10 ** 12)}'
+                                f'Referral amount is negative: {share["referral_fee_amount"] / (10 ** 12)}'
                             )
 
                         self.log.info(
