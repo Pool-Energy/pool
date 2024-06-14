@@ -17,6 +17,7 @@ async def get_cost(bundle: SpendBundle, height: uint32, constants) -> None:
         height=height,
         constants=constants,
     )
+
     if npc_result is not None and npc_result.error is not None:
         raise RuntimeError(f'rpc result error: {npc_result.error}')
 

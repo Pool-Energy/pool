@@ -1836,9 +1836,9 @@ class Pool:
             )
             return error_dict(
                 PoolErrorCode.TOO_LATE,
-                f"Received partial in {partial_time_taken}. Make sure your proof of space lookups "
-                f"are fast, and network connectivity is good. Response must happen in less than "
-                f"{self.partial_time_limit} seconds. NAS or network farming can be an issue",
+                f"Received partial in {partial_time_taken} seconds. Make sure your proof of space "
+                f"lookups are fast, and network connectivity is good. Response must happen in less "
+                f"than {self.partial_time_limit} seconds. NAS or network farming can be an issue",
             )
 
         # Validate the proof

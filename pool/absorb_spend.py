@@ -56,7 +56,6 @@ async def spend_with_fee(
     mojos_per_cost: int,
     used_fee_coins: List,
 ):
-
     rewarded_coin: Coin = compute_additions(spends[0])[-1]
     p2_coin = spends[1].coin
 
