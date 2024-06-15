@@ -414,7 +414,7 @@ class PgsqlPoolStore(object):
         # Define plot filename (regex) from partial payload
         plot_public_key = partial_payload.proof_of_space.plot_public_key
         pool_contract_puzzle_hash = partial_payload.proof_of_space.pool_contract_puzzle_hash
-        plot_id = std_hash(hexstr_to_bytes(pool_contract_puzzle_hash.split('0x')[1]) + hexstr_to_bytes(plot_public_key.split('0x')[1]))
+        plot_id = std_hash(hexstr_to_bytes(pool_contract_puzzle_hash) + hexstr_to_bytes(plot_public_key))
         plot_filename = f"plot-k{partial_payload.proof_of_space.size}-*-{plot_id}.plot"
 
         logger.debug(
