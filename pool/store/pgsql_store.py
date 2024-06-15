@@ -16,8 +16,6 @@ from chia.types.blockchain_format.sized_bytes import bytes32
 from chia.types.coin_record import CoinRecord
 from chia.types.coin_spend import CoinSpend
 from chia.util.ints import uint64
-from chia.util.hash import std_hash
-from chia.util.byte_types import hexstr_to_bytes
 
 from ..record import FarmerRecord
 from ..util import RequestMetadata, calculate_effort, days_pooling
@@ -411,24 +409,17 @@ class PgsqlPoolStore(object):
         time_taken: Optional[float] = 999.999,
         error: Optional[str] = None,
     ) -> None:
-        # Define plot filename (regex) from partial payload
-        plot_public_key = bytes(partial_payload.proof_of_space.plot_public_key)
-        pool_contract_puzzle_hash = bytes(partial_payload.proof_of_space.pool_contract_puzzle_hash)
-        plot_id = std_hash(hexstr_to_bytes(pool_contract_puzzle_hash.hex()) + hexstr_to_bytes(plot_public_key.hex()))
-        plot_filename = f"plot-k{partial_payload.proof_of_space.size}-*-{plot_id}.plot"
-
         logger.debug(
             f"Adding partial for {partial_payload.launcher_id.hex()} "
             f"(k{partial_payload.proof_of_space.size}) with "
-            f"difficulty {difficulty} in {time_taken} seconds. "
-            f"(filename: {plot_filename})"
+            f"difficulty {difficulty} in {time_taken} seconds."
         )
 
         async with self.pool.acquire() as conn:
             async with conn.cursor() as cursor:
                 await cursor.execute(
-                    "INSERT INTO partial (launcher_id, timestamp, difficulty, error, harvester_id, plot_id, chia_version, remote, pool_host, time_taken, plot_size, plot_filename)"
-                    "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
+                    "INSERT INTO partial (launcher_id, timestamp, difficulty, error, harvester_id, plot_id, chia_version, remote, pool_host, time_taken, plot_size)"
+                    "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
                     (
                         partial_payload.launcher_id.hex(),
                         timestamp,
@@ -441,7 +432,6 @@ class PgsqlPoolStore(object):
                         req_metadata.get_host() if req_metadata else None,
                         time_taken,
                         partial_payload.proof_of_space.size,
-                        plot_filename,
                     ),
                 )
 
