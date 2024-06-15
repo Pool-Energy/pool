@@ -1322,6 +1322,9 @@ class Pool:
         time_received: uint64,
         points_received: uint64,
     ) -> None:
+        if self.node_rpc_client is None:
+            self.log.error("Node RPC client is not initialized, cannot confirm partial")
+            return
         try:
             response = await self.get_signage_point_or_eos(partial)
 
@@ -1389,7 +1392,7 @@ class Pool:
 
             _, _, is_member = singleton_state_tuple
             if not is_member:
-                self.log.info("Singleton is not assigned to this pool")
+                self.log.info(f"Singleton {partial.payload.launcher_id.hex()} is not assigned to this pool")
                 await self.partials.add_partial(
                     partial.payload,
                     req_metadata,
