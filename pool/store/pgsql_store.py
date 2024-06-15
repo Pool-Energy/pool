@@ -412,9 +412,10 @@ class PgsqlPoolStore(object):
         error: Optional[str] = None,
     ) -> None:
         # Define plot filename (regex) from partial payload
-        plot_public_key = hexstr_to_bytes(partial_payload.proof_of_space.plot_public_key.hex().split('0x')[1])
-        pool_contract_puzzle_hash = hexstr_to_bytes(partial_payload.proof_of_space.pool_contract_puzzle_hash.hex().split('0x')[1])
-        plot_filename = f"plot-k{partial_payload.proof_of_space.size}-*-{std_hash(pool_contract_puzzle_hash + plot_public_key).hex()}.plot"
+        plot_public_key = partial_payload.proof_of_space.plot_public_key
+        pool_contract_puzzle_hash = partial_payload.proof_of_space.pool_contract_puzzle_hash
+        plot_id = std_hash(hexstr_to_bytes(pool_contract_puzzle_hash.split('0x')[1]) + hexstr_to_bytes(plot_public_key.split('0x')[1]))
+        plot_filename = f"plot-k{partial_payload.proof_of_space.size}-*-{plot_id}.plot"
 
         logger.debug(
             f"Adding partial for {partial_payload.launcher_id.hex()} "
