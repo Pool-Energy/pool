@@ -406,7 +406,7 @@ class PgsqlPoolStore(object):
         req_metadata: Optional[RequestMetadata],
         timestamp: uint64,
         difficulty: uint64,
-        time_taken: Optional[float] = 999.999,
+        time_taken: Optional[float] = -999.999,
         error: Optional[str] = None,
     ) -> None:
         logger.debug(
