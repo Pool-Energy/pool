@@ -37,11 +37,8 @@ async def discord_payment(payments):
     }) as r:
         pass
 
-
 if __name__ == '__main__':
-    if sys.argv[1] != 'PAYMENTS':
-        print('Not an PAYMENTS hook')
+    if sys.argv[1] != 'PAYMENT':
+        print('Not an PAYMENT hook')
         sys.exit(1)
-    asyncio.run(discord_payment(
-        *sys.argv[2:],
-    ))
+    asyncio.run(discord_payment(*sys.argv[2:]))

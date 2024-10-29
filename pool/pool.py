@@ -1227,11 +1227,7 @@ class Pool:
                     await self.store.confirm_transaction(transaction, payment_targets)
                     self.log.info(f'Successfully confirmed transaction {transaction.name}')
 
-                    # Notify each farmer of their payment (based from database configuration)
                     asyncio.create_task(self.notifications.payment(payment_targets))
-
-                    # Discord payments hook (total amount)
-                    await self.run_hook('payments', payment_targets)
 
             except asyncio.CancelledError:
                 self.log.info("Cancelled submit_payment_loop, closing")
