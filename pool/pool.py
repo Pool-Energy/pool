@@ -1180,16 +1180,16 @@ class Pool:
                             payment_targets,
                         )
 
-                        self.log.info('Submitting a payment transaction')
+                        self.log.info('Submitting payments')
 
                         try:
-                            await wallet['rpc_client'].push_transaction(wallet['id'], [transaction])
+                            await wallet['rpc_client'].push_transactions([transaction])
                         except Exception as e:
-                            self.log.error(f"Error during submit a payment transaction: {e}, retry in 30 seconds", exc_info=True)
+                            self.log.error(f"Error during submit payments: {e}, retry in 30 seconds", exc_info=True)
                             await asyncio.sleep(30)
                             continue
 
-                        self.log.info(f"Details of the transaction: {transaction}")
+                        self.log.info(f"Details of transaction: {transaction}")
                         await self.store.add_transaction(transaction, payment_targets)
 
                     peak_height = await wallet['rpc_client'].get_height_info()
