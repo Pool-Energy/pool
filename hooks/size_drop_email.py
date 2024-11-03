@@ -7,6 +7,9 @@ import os
 import smtplib
 import sys
 import yaml
+import logging
+
+logger = logging.getLogger('hooks.size_drop_email')
 
 
 def load_config():

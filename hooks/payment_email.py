@@ -7,8 +7,11 @@ import os
 import smtplib
 import sys
 import yaml
+import logging
 
 from pool.store.pgsql_store import PgsqlPoolStore
+
+logger = logging.getLogger('hooks.payment_email')
 
 
 def load_config():

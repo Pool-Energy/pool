@@ -7,6 +7,9 @@ import os
 import sys
 import yaml
 import datetime
+import logging
+
+logger = logging.getLogger('hooks.discord_absorb')
 
 
 def load_config():
@@ -14,7 +17,7 @@ def load_config():
         return yaml.safe_load(f)
 
 
-async def discord_blocks_farmed(absorbeb_coins):
+async def main(absorbeb_coins):
     config = load_config()
     absorbeb_coins = json.loads(absorbeb_coins.strip())
     farmed_heights = []
@@ -30,6 +33,8 @@ async def discord_blocks_farmed(absorbeb_coins):
 
     coins_blocks = ", ".join([f"[#{i}](https://xchscan.com/blocks/{i})" for i in farmed_heights])
     farmed_by = ", ".join([f"[{f['name'] or f['launcher_id']}](https://pool.energy/farmer/{f['launcher_id'].split('x')[1]})" for f in farmers])
+
+    logger.info(f'New block(s) farmed! {coins_blocks}. Farmed by {farmed_by}.')
 
     async with aiohttp.request('POST', config['hook_discord_absorb']['url'], json={
         'username': config['hook_discord_absorb']['username'],
@@ -50,6 +55,4 @@ if __name__ == '__main__':
     if sys.argv[1] != 'ABSORB':
         print('Not an ABSORB hook')
         sys.exit(1)
-    asyncio.run(discord_blocks_farmed(
-        sys.argv[2],
-    ))
+    asyncio.run(main(sys.argv[2]))

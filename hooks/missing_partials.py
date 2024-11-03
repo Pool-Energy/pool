@@ -5,8 +5,10 @@ import json
 import os
 import smtplib
 import sys
-import textwrap
 import yaml
+import logging
+
+logger = logging.getLogger('hooks.missing_partials')
 
 
 def load_config():
@@ -29,4 +31,8 @@ def main(farmer_records):
 
 if __name__ == '__main__':
     assert sys.argv[1] == 'MISSING_PARTIALS'
-    main(json.loads(sys.argv[2].strip()))
+    main(
+        json.loads(
+            sys.argv[2].strip()
+        )
+    )

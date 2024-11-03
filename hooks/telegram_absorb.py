@@ -6,6 +6,9 @@ import json
 import os
 import sys
 import yaml
+import logging
+
+logger = logging.getLogger('hooks.telegram_absorb')
 
 
 def load_config():
@@ -13,7 +16,7 @@ def load_config():
         return yaml.safe_load(f)
 
 
-async def telegram_blocks_farmed(absorbeb_coins):
+async def main(absorbeb_coins):
     config = load_config()
     absorbeb_coins = json.loads(absorbeb_coins.strip())
 
@@ -30,6 +33,8 @@ async def telegram_blocks_farmed(absorbeb_coins):
     coins_blocks = ', '.join([f'#{i}' for i in farmed_heights])
     farmed_by = ', '.join(farmers)
 
+    logger.info(f'Yeni blok geldi! {coins_blocks}. Kazan kisi {farmed_by}.')
+
     async with aiohttp.request('POST', f"https://api.telegram.org/bot{config['hook_telegram_absorb']['api_token']}/sendMessage", json={
         'chat_id': config['hook_telegram_absorb']['chat_id'],
         'text': f"Yeni blok geldi! {coins_blocks}. Kazan kisi {farmed_by}."
@@ -41,6 +46,4 @@ if __name__ == '__main__':
     if sys.argv[1] != 'ABSORB':
         print('Not an ABSORB hook')
         sys.exit(1)
-    asyncio.run(telegram_blocks_farmed(
-        sys.argv[2],
-    ))
+    asyncio.run(main(sys.argv[2]))
