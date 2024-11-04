@@ -1429,7 +1429,7 @@ class Pool:
                 )
 
                 if farmer_record.is_pool_member:
-                    plogger.info(f"Farmer {farmer_record.launcher_id} updated points to: {farmer_record.points + points_received}")
+                    plogger.info(f"Farmer {farmer_record.launcher_id} updated points from {farmer_record.points} to {farmer_record.points + points_received}")
                     await self.partials.add_partial(
                         partial.payload,
                         req_metadata,
