@@ -10,7 +10,7 @@ from chia.util.config import load_config
 from chia.util.default_root import DEFAULT_ROOT_PATH
 from chia.util.ints import uint16
 
-from pool.store.pgsql_store import PgsqlPoolStore
+from pool.pool.store.postgresql_store import PostgresqlPoolStore
 from pool.singleton import find_reward_from_coinrecord
 
 """
@@ -27,7 +27,7 @@ async def main():
         pool_config['nodes'][0]['hostname'], uint16(8555), DEFAULT_ROOT_PATH, config
     )
 
-    store = PgsqlPoolStore(pool_config)
+    store = PostgresqlPoolStore(pool_config)
     await store.connect()
 
     coin_records: List = await node_rpc_client.get_coin_records_by_puzzle_hash(
@@ -39,7 +39,7 @@ async def main():
     rewards = {i[0] for i in await store._execute("SELECT name from coin_reward")}
 
     for cr in sorted(coin_records, key=lambda x: int(x.confirmed_block_index)):
-        if cr.coin.amount != 1750000000000:
+        if cr.coin.amount != 1750000000000 or cr.coin.amount != 875000000000:
             continue
         if cr.name.hex() in rewards:
             continue

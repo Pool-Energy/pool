@@ -22,7 +22,7 @@ from ..util import RequestMetadata, calculate_effort, days_pooling
 
 # FIXME: hardcoded to 12 hours cool down
 COOLDOWN_LEFT_JOIN_HOURS = 12
-logger = logging.getLogger('pgsql_store')
+logger = logging.getLogger('postgresql_store')
 
 
 def left_join_cooldown(
@@ -59,7 +59,7 @@ def left_join_cooldown(
     return sql
 
 
-class PgsqlPoolStore(object):
+class PostgresqlPoolStore(object):
     def __init__(self, pool_config: Dict):
         self.lock = asyncio.Lock()
         self.pool_config = pool_config

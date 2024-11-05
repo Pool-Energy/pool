@@ -2,7 +2,7 @@ import pytest
 from datetime import datetime, timezone
 from unittest.mock import patch
 
-from pool.store.pgsql_store import left_join_cooldown
+from pool.pool.store.postgresql_store import left_join_cooldown
 
 
 @pytest.mark.parametrize(
@@ -105,7 +105,7 @@ from pool.store.pgsql_store import left_join_cooldown
         ),
     ],
 )
-@patch('pool.store.pgsql_store.datetime.datetime')
+@patch('pool.store.postgresql_store.datetime.datetime')
 def test__left_join_cooldown(
     mock, now, left_last_at, left_at, is_member, was_member, cooldown_hours, rv
 ):

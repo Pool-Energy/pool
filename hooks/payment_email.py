@@ -9,7 +9,7 @@ import sys
 import yaml
 import logging
 
-from pool.store.pgsql_store import PgsqlPoolStore
+from pool.pool.store.postgresql_store import PostgresqlPoolStore
 
 logger = logging.getLogger('hooks.payment_email')
 
@@ -21,7 +21,7 @@ def load_config():
 
 async def main(payments):
     config = load_config()
-    store = PgsqlPoolStore(config)
+    store = PostgresqlPoolStore(config)
     await store.connect()
 
     with open(config['hook_payment']['message_path'], 'r') as f:

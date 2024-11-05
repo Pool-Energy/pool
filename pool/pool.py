@@ -67,7 +67,7 @@ from .singleton import (
     find_reward_from_coinrecord,
 )
 from .store.influxdb_store import InfluxdbStore
-from .store.pgsql_store import PgsqlPoolStore
+from .store.postgresql_store import PostgresqlPoolStore
 from .record import FarmerRecord
 from .task import task_exception
 from .types import AbsorbFee, PaymentFee
@@ -105,7 +105,7 @@ class Pool:
         ]
         self.constants: ConsensusConstants = replace_str_to_bytes(DEFAULT_CONSTANTS, **overrides)
 
-        self.store = PgsqlPoolStore(pool_config)
+        self.store = PostgresqlPoolStore(pool_config)
         self.store_ts = InfluxdbStore(pool_config)
         self.notifications = Notifications(self)
         self.partials = Partials(self)
