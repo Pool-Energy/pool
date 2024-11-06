@@ -1049,37 +1049,35 @@ class Pool:
         while True:
             try:
                 peak_height = self.blockchain_state["peak"].height
+
                 try:
                     await wallet['rpc_client'].log_in(fingerprint=wallet['fingerprint'])
                 except aiohttp.client_exceptions.ClientConnectorError:
-                    self.log.warning(
-                        'Failed to connect to wallet %s, retrying in 30 seconds',
-                        wallet['fingerprint'],
-                    )
+                    self.log.warning(f"Failed to connect to wallet {wallet['fingerprint']}, retrying in 30 seconds")
                     await asyncio.sleep(30)
                     continue
 
-                if not self.blockchain_state["sync"]["synced"] or not wallet['synced']:
-                    self.log.warning("Waiting for wallet %s sync", wallet['fingerprint'])
+                if not self.blockchain_state["sync"]["synced"]:
+                    self.log.warning("Waiting for blockchain node sync, retrying in 30 seconds")
                     await asyncio.sleep(30)
                     continue
 
-                # Lets make sure we dont get the payments while its being added to database
+                if not wallet['synced']:
+                    self.log.warning(f"Waiting for wallet {wallet['fingerprint']} sync, retrying in 30 seconds")
+                    await asyncio.sleep(30)
+                    continue
+
                 async with self.store.lock:
-                    payment_targets_per_tx = await self.store.get_pending_payment_targets(
-                        wallet['puzzle_hash'],
-                    )
+                    payment_targets_per_tx = await self.store.get_pending_payment_targets(wallet['puzzle_hash'])
 
                 if not payment_targets_per_tx:
                     await asyncio.sleep(60)
                     continue
 
                 for tx_id, payment_targets in payment_targets_per_tx.items():
-
                     if tx_id:
                         try:
                             transaction = await wallet['rpc_client'].get_transaction(tx_id)
-                            # Transaction already exists, lets readjust transaction fee
                             transation_phs = set()
                             unaccounted_amount = None
                             for addition_coin in transaction.additions:
@@ -1094,23 +1092,18 @@ class Pool:
                                             t['amount'] -= fee_per_payout
                                 else:
                                     if unaccounted_amount is None:
-                                        # TODO: Make sure this address belong to pool wallet
                                         unaccounted_amount = int(addition_coin.amount)
                                     else:
                                         raise RuntimeError('More than one change coin %r', addition_coin)
-                            # Remove payment_targets not in the transaction
                             for ph in (set(payment_targets.keys()) - transation_phs):
                                 payment_targets.pop(ph)
-
                         except ValueError as e:
                             if 'not found' in str(e):
-                                self.log.info(f'Transaction {tx_id} not found, removing.')
+                                self.log.info(f'Transaction {tx_id} not found, removing from pending')
                                 await self.store.remove_transaction(tx_id)
                                 tx_id = None
 
                     if tx_id is None:
-
-                        # Only allow launcher minimum payment for the first pool wallet
                         enable_launcher_min_payment = (
                             self.wallets[0]['puzzle_hash'] == wallet['puzzle_hash']
                         )
@@ -1123,7 +1116,7 @@ class Pool:
 
                         if additions and self.payment_fee == PaymentFee.AUTO:
                             payment_fee = self.blockchain_mempool_full_pct > 10
-                            self.log.info('Payment fee is AUTO. Fees? %r', payment_fee)
+                            self.log.info(f"Payment fee is auto. Set to {payment_fee}")
                         else:
                             payment_fee = self.payment_fee == PaymentFee.TRUE
 
@@ -1139,19 +1132,13 @@ class Pool:
                                     enable_launcher_min_payment,
                                     self.constants,
                                 )
-
-                            # Take the cost of the payment fee out of the pool wallet
                             else:
-                                # Calculate minimum cost automatically
                                 if self.payment_fee_absolute == -1:
                                     transaction: TransactionRecord = await create_transaction(
                                         self.node_rpc_client,
                                         wallet,
                                         self.store,
                                         additions,
-                                        # Estimated fee
-                                        # Two extra additions to account for extra coins
-                                        # used to remove the fee.
                                         uint64(25000000 * (len(additions) + 2)),
                                         payment_targets,
                                     )
@@ -1161,13 +1148,13 @@ class Pool:
                                 else:
                                     fee_absolute = self.payment_fee_absolute
 
-                                self.log.info('Using absolute payment fee of %d', fee_absolute)
+                                self.log.info(f"Using absolute payment fee of {fee_absolute}")
                                 blockchain_fee = uint64(fee_absolute)
                         else:
                             blockchain_fee = uint64(0)
 
                         if not additions:
-                            self.log.info('No payments above minimum, skipping.')
+                            self.log.info("No payments above minimum, skipping and retrying in 60 seconds")
                             await asyncio.sleep(60)
                             continue
 
@@ -1180,12 +1167,12 @@ class Pool:
                             payment_targets,
                         )
 
-                        self.log.info('Submitting payments')
+                        self.log.info("Submitting payments")
 
                         try:
                             await wallet['rpc_client'].push_transactions([transaction])
                         except Exception as e:
-                            self.log.error(f"Error during submit payments: {e}, retry in 30 seconds", exc_info=True)
+                            self.log.error(f"Error during submit payments: {e}, retrying in 30 seconds", exc_info=True)
                             await asyncio.sleep(30)
                             continue
 
@@ -1200,28 +1187,19 @@ class Pool:
                     ):
                         transaction = await wallet['rpc_client'].get_transaction(transaction.name)
                         peak_height = await wallet['rpc_client'].get_height_info()
-                        self.log.info(
-                            f"Waiting for transaction to obtain {self.confirmation_security_threshold} confirmations"
-                        )
+                        self.log.info(f"Waiting for transaction to obtain {self.confirmation_security_threshold} confirmations")
                         if not transaction.confirmed:
                             is_in_mempool = transaction.is_in_mempool()
                             self.log.info(f"Not confirmed. In mempool? {is_in_mempool}")
-                            # FIXME: remove me after 1.3 wallet bug has been fixed
                             try:
                                 if not is_in_mempool:
-                                    push_tx_response: Dict = await self.node_rpc_client.push_tx(
-                                        transaction.spend_bundle
-                                    )
+                                    push_tx_response: Dict = await self.node_rpc_client.push_tx(transaction.spend_bundle)
                                     if push_tx_response["status"] != "SUCCESS":
-                                        self.log.error(
-                                            f"Error submitting transaction: {push_tx_response}"
-                                        )
+                                        self.log.error(f"Error submitting transaction: {push_tx_response}")
                             except Exception:
-                                self.log.error(
-                                    'Error pushing payment directly to node', exc_info=True,
-                                )
+                                self.log.error("Error pushing payment directly to node", exc_info=True)
                         else:
-                            self.log.info(f"Confirmations: {peak_height - transaction.confirmed_at_height}")
+                            self.log.info(f"Confirmations: {peak_height - transaction.confirmed_at_height}/{self.confirmation_security_threshold}")
                         await asyncio.sleep(10)
 
                     await self.store.confirm_transaction(transaction, payment_targets)
@@ -1230,7 +1208,7 @@ class Pool:
                     asyncio.create_task(self.notifications.payment(payment_targets))
 
             except asyncio.CancelledError:
-                self.log.info("Cancelled submit_payment_loop, closing")
+                self.log.info("Cancelled submit_payment_loop, closing task")
                 return
             except Exception as e:
                 self.log.error(f"Unexpected error in submit_payment_loop: {e}", exc_info=True)
