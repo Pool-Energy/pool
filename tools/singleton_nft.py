@@ -9,7 +9,7 @@ from chia.util.default_root import DEFAULT_ROOT_PATH
 from chia.util.ints import uint16
 from chia.consensus.default_constants import DEFAULT_CONSTANTS
 
-from pool.pool.store.postgresql_store import PostgresqlPoolStore
+from pool.store.postgresql_store import PostgresqlPoolStore
 from pool.singleton import get_singleton_state
 
 """

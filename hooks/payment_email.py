@@ -9,7 +9,7 @@ import sys
 import yaml
 import logging
 
-from pool.pool.store.postgresql_store import PostgresqlPoolStore
+from pool.store.postgresql_store import PostgresqlPoolStore
 
 logger = logging.getLogger('hooks.payment_email')
 
