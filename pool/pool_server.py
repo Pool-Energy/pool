@@ -78,6 +78,10 @@ class PoolServer:
                 res_object = await f(request)
                 if res_object is None:
                     res_object = {}
+            except ConnectionResetError as e:
+                self.log.warning('Connection was reset by the client', exc_info=True)
+                res_error = error_response(PoolErrorCode.CONNECTION_RESET, f"{e}")
+                return allow_cors(res_error)
             except Exception as e:
                 self.log.warning('Error while handling message', exc_info=True)
                 if len(e.args) > 0:
