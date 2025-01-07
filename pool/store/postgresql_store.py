@@ -822,6 +822,7 @@ class PostgresqlPoolStore(object):
             'blockchain_space',
             'blockchain_avg_block_time',
             'wallets',
+            'nodes',
         ):
             if i in attrs:
                 sql.append(f'{i} = %s')
@@ -836,6 +837,7 @@ class PostgresqlPoolStore(object):
             " blockchain_space,"
             " blockchain_avg_block_time,"
             " wallets"
+            " nodes"
             " FROM globalinfo WHERE id = 1"
         )
         if not rv:
@@ -847,6 +849,7 @@ class PostgresqlPoolStore(object):
             'blockchain_space': rv[2],
             'blockchain_avg_block_time': rv[3],
             'wallets': rv[4],
+            'nodes': rv[5],
         }
 
     async def get_referrals(self):

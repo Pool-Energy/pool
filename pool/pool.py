@@ -560,6 +560,14 @@ class Pool:
                         }
                         for i in self.wallets
                     ]),
+                    'nodes': json.dumps([
+                        {
+                            'host': i['hostname'],
+                            'state': i['blockchain_state'],
+                            'mempool': i['blockchain_mempool_full_pct'],
+                        }
+                        for i in self.nodes
+                    ]),
                 }))
 
                 asyncio.create_task(
