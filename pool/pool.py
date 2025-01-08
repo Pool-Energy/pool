@@ -498,13 +498,15 @@ class Pool:
 
         self.blockchain_state = cur_node['blockchain_state']
         self.blockchain_mempool_full_pct = cur_node['blockchain_mempool_full_pct']
+        self.primary_node = cur_node
 
-    def node_state_to_dict(self, node):
+    def node_state_to_dict(self, node, is_primary=False):
         return {
             'hostname': node['hostname'],
             'synced': (node['blockchain_state'].get('sync') or {}).get('synced', False),
             'peak_height': node['blockchain_state']['peak'].height if node['blockchain_state'].get('peak') else None,
             'mempool_full_pct': node.get('blockchain_mempool_full_pct', 0),
+            'primary': is_primary,
         }
 
     @task_exception
@@ -572,7 +574,7 @@ class Pool:
                         for i in self.wallets
                     ]),
                     'nodes': json.dumps([
-                        self.node_state_to_dict(node)
+                        self.node_state_to_dict(node, is_primary=(node == self.primary_node))
                         for node in self.nodes
                     ]),
                 }))
