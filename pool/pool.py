@@ -473,6 +473,7 @@ class Pool:
     def set_healthy_node(self, switch=False):
         higher_peak = None
         cur_node = None
+
         for node in self.nodes:
             if not (node['blockchain_state'].get('sync') or {}).get('synced'):
                 logger.warning('Node %r not synced', node['hostname'])
@@ -487,14 +488,24 @@ class Pool:
             elif node['blockchain_state']['peak'].height > higher_peak:
                 higher_peak = node['blockchain_state']['peak'].height
                 cur_node = node
+
         if cur_node is None:
             raise RuntimeError('No healthy node available')
 
         if self.node_rpc_client != cur_node['rpc_client']:
             self.log.warning('Switching to node %r', cur_node['hostname'])
             self.node_rpc_client = cur_node['rpc_client']
+
         self.blockchain_state = cur_node['blockchain_state']
         self.blockchain_mempool_full_pct = cur_node['blockchain_mempool_full_pct']
+
+    def node_state_to_dict(self, node):
+        return {
+            'hostname': node['hostname'],
+            'synced': (node['blockchain_state'].get('sync') or {}).get('synced', False),
+            'peak_height': node['blockchain_state']['peak'].height if node['blockchain_state'].get('peak') else None,
+            'mempool_full_pct': node.get('blockchain_mempool_full_pct', 0),
+        }
 
     @task_exception
     async def get_peak_loop(self):
@@ -561,12 +572,8 @@ class Pool:
                         for i in self.wallets
                     ]),
                     'nodes': json.dumps([
-                        {
-                            'host': i['hostname'],
-                            'state': i['blockchain_state'],
-                            'mempool': i['blockchain_mempool_full_pct'],
-                        }
-                        for i in self.nodes
+                        self.node_state_to_dict(node)
+                        for node in self.nodes
                     ]),
                 }))
 
