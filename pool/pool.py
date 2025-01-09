@@ -252,11 +252,12 @@ class Pool:
                 'hostname': node['hostname'],
                 'rpc_port': node.get('rpc_port') or 8555,
                 'ssl_dir': node.get('ssl_dir'),
+                'location': node.get('location', 'unknown'),
+                'region': node.get('region', 'unknown'),
                 'rpc_client': None,
                 # Keeps track of the latest state of our node
                 'blockchain_state': {'peak': None},
                 'blockchain_mempool_full_pct': 0,
-
             })
 
         # Keeps track of the latest state of our node
