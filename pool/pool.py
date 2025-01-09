@@ -506,6 +506,8 @@ class Pool:
             'synced': (node['blockchain_state'].get('sync') or {}).get('synced', False),
             'peak_height': node['blockchain_state']['peak'].height if node['blockchain_state'].get('peak') else None,
             'mempool_full_pct': node.get('blockchain_mempool_full_pct', 0),
+            'location': node.get('location', 'unknown'),
+            'region': node.get('region', 'unknown'),
             'primary': is_primary,
         }
 
