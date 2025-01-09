@@ -836,7 +836,7 @@ class PostgresqlPoolStore(object):
             " blockchain_height,"
             " blockchain_space,"
             " blockchain_avg_block_time,"
-            " wallets"
+            " wallets,"
             " nodes"
             " FROM globalinfo WHERE id = 1"
         )
