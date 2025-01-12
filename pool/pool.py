@@ -254,8 +254,9 @@ class Pool:
                 'ssl_dir': node.get('ssl_dir'),
                 'location': node.get('location', 'unknown'),
                 'region': node.get('region', 'unknown'),
+                'enabled': node.get('enabled', True),
+                'available': True,
                 'rpc_client': None,
-                # Keeps track of the latest state of our node
                 'blockchain_state': {'peak': None},
                 'blockchain_mempool_full_pct': 0,
             })
@@ -331,22 +332,23 @@ class Pool:
                 wallet['synced'] = False
 
         working_node = None
+
         while not working_node:
             for node in self.nodes:
+                if not node['enabled']:
+                    continue
                 try:
                     node['blockchain_state'] = await node['rpc_client'].get_blockchain_state()
                 except aiohttp.client_exceptions.ClientConnectorError as e:
-                    self.log.error(
-                        'Failing to connect to node %r, retrying in 2 seconds: %s',
-                        node['hostname'],
-                        e,
-                    )
+                    self.log.error('Failing to connect to node %r, retrying in 2 seconds: %s', node['hostname'], e)
                 else:
-                    # Select the first by default
+                    # use the first node enabled that is available
                     if not working_node:
                         working_node = node
+
             if not working_node:
                 await asyncio.sleep(2)
+
         self.node_rpc_client = working_node['rpc_client']
         self.blockchain_state = working_node['blockchain_state']
 
@@ -406,8 +408,9 @@ class Pool:
         await self.confirm_partials_loop_task
 
         for wallet in self.wallets:
-            wallet['rpc_client'].close()
-            await wallet['rpc_client'].await_closed()
+            if wallet['rpc_client']:
+                wallet['rpc_client'].close()
+                await wallet['rpc_client'].await_closed()
 
         for node in self.nodes:
             if node['rpc_client']:
@@ -476,11 +479,12 @@ class Pool:
         cur_node = None
 
         for node in self.nodes:
+            if not node['enabled']:
+                continue
             if not (node['blockchain_state'].get('sync') or {}).get('synced'):
                 logger.warning('Node %r not synced', node['hostname'])
                 continue
-            if switch is True:
-                # If we are switching always choose a different one
+            if switch:
                 if node['rpc_client'] == self.node_rpc_client:
                     continue
             if higher_peak is None:
@@ -509,6 +513,8 @@ class Pool:
             'mempool_full_pct': node.get('blockchain_mempool_full_pct', 0),
             'location': node.get('location', 'unknown'),
             'region': node.get('region', 'unknown'),
+            'enabled': node.get('enabled', True),
+            'available': node.get('available', True),
             'primary': is_primary,
         }
 
@@ -528,17 +534,14 @@ class Pool:
                             node['blockchain_state']['mempool_max_total_cost']
                         ) * 100)
                     except Exception:
-                        self.log.warning(
-                            'Failed to get blockchain state for node %r',
-                            node['hostname'],
-                            exc_info=True,
-                        )
+                        self.log.warning('Failed to get blockchain state for node %r', node['hostname'], exc_info=True)
+                        node['available'] = False
                     else:
                         working_node = True
 
                 if not working_node:
                     self.log.error('Unable to get blockchain state from any node.')
-                    await asyncio.sleep(15)
+                    await asyncio.sleep(10)
                     continue
 
                 self.set_healthy_node()
