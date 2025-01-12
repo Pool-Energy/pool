@@ -533,6 +533,7 @@ class Pool:
                             node['blockchain_state']['mempool_cost'] /
                             node['blockchain_state']['mempool_max_total_cost']
                         ) * 100)
+                        node['available'] = True
                     except Exception:
                         self.log.warning('Failed to get blockchain state for node %r', node['hostname'], exc_info=True)
                         node['available'] = False
