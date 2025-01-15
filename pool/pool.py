@@ -476,7 +476,7 @@ class Pool:
 
     def set_healthy_node(self, switch=False, threshold_peak=2):
         higher_peak = None
-        cur_node = None
+        current_node = None
 
         for node in self.nodes:
             if not node['enabled']:
@@ -489,27 +489,27 @@ class Pool:
                     continue
             if higher_peak is None:
                 higher_peak = node['blockchain_state']['peak'].height
-                cur_node = node
+                current_node = node
+            elif node['blockchain_state']['peak'].height + threshold_peak > higher_peak:
+                logger.warning(
+                    'Acceptable peak threshold (%s) between node %r and eligible node %r',
+                    threshold_peak, current_node['hostname'], node['hostname']
+                )
+                continue
             elif node['blockchain_state']['peak'].height > higher_peak:
                 higher_peak = node['blockchain_state']['peak'].height
-                cur_node = node
+                current_node = node
 
-        if cur_node is None:
+        if current_node is None:
             raise RuntimeError('No healthy node available')
 
-        if self.node_rpc_client and self.blockchain_state:
-            cur_peak = self.blockchain_state['peak'].height
-            if abs(cur_peak - higher_peak) <= threshold_peak:
-                logger.warning('Current node %r is within the acceptable peak threshold', cur_node['hostname'])
-                return
+        if self.node_rpc_client != current_node['rpc_client']:
+            self.log.warning('Switching to node %r', current_node['hostname'])
+            self.node_rpc_client = current_node['rpc_client']
 
-        if self.node_rpc_client != cur_node['rpc_client']:
-            self.log.warning('Switching to node %r', cur_node['hostname'])
-            self.node_rpc_client = cur_node['rpc_client']
-
-        self.blockchain_state = cur_node['blockchain_state']
-        self.blockchain_mempool_full_pct = cur_node['blockchain_mempool_full_pct']
-        self.primary_node = cur_node
+        self.blockchain_state = current_node['blockchain_state']
+        self.blockchain_mempool_full_pct = current_node['blockchain_mempool_full_pct']
+        self.primary_node = current_node
 
     def node_state_to_dict(self, node, is_primary=False):
         return {
