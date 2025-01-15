@@ -474,7 +474,7 @@ class Pool:
         else:
             logger.debug('Hook %r returned %d: %r', hook, proc.returncode, stdout)
 
-    def set_healthy_node(self, switch=False):
+    def set_healthy_node(self, switch=False, threshold_peak=2):
         higher_peak = None
         cur_node = None
 
@@ -496,6 +496,12 @@ class Pool:
 
         if cur_node is None:
             raise RuntimeError('No healthy node available')
+
+        if self.node_rpc_client and self.blockchain_state:
+            cur_peak = self.blockchain_state['peak'].height
+            if abs(cur_peak - higher_peak) <= threshold_peak:
+                logger.warning('Current node %r is within the acceptable peak threshold', cur_node['hostname'])
+                return
 
         if self.node_rpc_client != cur_node['rpc_client']:
             self.log.warning('Switching to node %r', cur_node['hostname'])
