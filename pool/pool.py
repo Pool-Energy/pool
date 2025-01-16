@@ -490,15 +490,17 @@ class Pool:
             if higher_peak is None:
                 higher_peak = node['blockchain_state']['peak'].height
                 current_node = node
-            elif node['blockchain_state']['peak'].height + threshold_peak > higher_peak:
-                logger.warning(
-                    'Acceptable peak threshold (%s) between node %r and eligible node %r',
-                    threshold_peak, current_node['hostname'], node['hostname']
-                )
-                continue
             elif node['blockchain_state']['peak'].height > higher_peak:
-                higher_peak = node['blockchain_state']['peak'].height
-                current_node = node
+                # return a warning only if acceptable peak threshold
+                if abs(node['blockchain_state']['peak'].height - higher_peak) <= threshold_peak:
+                    logger.warning(
+                        'Acceptable peak threshold (%s) between current node %r and eligible node %r',
+                        threshold_peak, current_node['hostname'], node['hostname']
+                    )
+                    continue
+                else:
+                    higher_peak = node['blockchain_state']['peak'].height
+                    current_node = node
 
         if current_node is None:
             raise RuntimeError('No healthy node available')
