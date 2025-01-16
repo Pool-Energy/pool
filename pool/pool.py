@@ -494,8 +494,12 @@ class Pool:
                 # return a warning only if acceptable peak threshold
                 if abs(node['blockchain_state']['peak'].height - higher_peak) <= threshold_peak:
                     logger.warning(
-                        'Acceptable peak threshold (%s) between current node %r and eligible node %r',
-                        threshold_peak, current_node['hostname'], node['hostname']
+                        'Acceptable peak threshold (%s) between current node %r (peak: %s) and eligible node %r (peak: %s)',
+                        threshold_peak,
+                        current_node['hostname'],
+                        higher_peak,
+                        node['hostname'],
+                        node['blockchain_state']['peak'].height
                     )
                     continue
                 else:
