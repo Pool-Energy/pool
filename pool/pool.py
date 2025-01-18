@@ -351,6 +351,7 @@ class Pool:
 
         self.node_rpc_client = working_node['rpc_client']
         self.blockchain_state = working_node['blockchain_state']
+        self.primary_node = working_node
 
         try:
             for wallet in self.wallets:
@@ -507,7 +508,8 @@ class Pool:
                     current_node = node
 
         if current_node is None:
-            raise RuntimeError('No healthy node available')
+            self.log.critical('No healthy node available')
+            return
 
         if self.node_rpc_client != current_node['rpc_client']:
             self.log.warning('Switching to node %r', current_node['hostname'])
