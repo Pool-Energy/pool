@@ -177,10 +177,12 @@ class Pool:
         self.default_target_puzzle_hashes: List[bytes32] = []
         self.wallets = []
         for wallet in pool_config["wallets"]:
+            wallet['name'] = wallet.get('name', 'unknown')
             wallet['puzzle_hash'] = bytes32(decode_puzzle_hash(wallet['address']))
             self.default_target_puzzle_hashes.append(wallet['puzzle_hash'])
-            wallet['hostname'] = wallet.get("hostname") or self.config["self_hostname"]
-            wallet['ssl_dir'] = wallet.get("ssl_dir")
+            wallet['rpc_host'] = wallet.get('rpc_host', 'localhost')
+            wallet['rpc_port'] = wallet.get('rpc_port', 9256)
+            wallet['ssl_dir'] = wallet.get('ssl_dir')
             wallet['synced'] = False
             wallet['balance'] = None
             self.wallets.append(wallet)
@@ -249,8 +251,9 @@ class Pool:
         self.nodes: List[Dict] = []
         for node in pool_config['nodes']:
             self.nodes.append({
-                'hostname': node['hostname'],
-                'rpc_port': node.get('rpc_port') or 8555,
+                'name': node.get('name', 'unknown'),
+                'rpc_host': node.get('rpc_host', 'localhost'),
+                'rpc_port': node.get('rpc_port', 8555),
                 'ssl_dir': node.get('ssl_dir'),
                 'location': node.get('location', 'unknown'),
                 'region': node.get('region', 'unknown'),
@@ -272,7 +275,7 @@ class Pool:
 
         working_node = False
         for node in list(self.nodes):
-            args = [node['hostname'], uint16(node['rpc_port'])]
+            args = [node['rpc_host'], uint16(node['rpc_port'])]
             if node['ssl_dir']:
                 args += [
                     pathlib.Path(node['ssl_dir']),
@@ -294,8 +297,10 @@ class Pool:
                 node['rpc_client'] = await FullNodeRpcClient.create(*args)
             except Exception:
                 self.log.error(
-                    'Failed to create connection to %s. Removing it.',
-                    node['hostname'],
+                    'Failed to create connection to %s (%s:%s). Removing it.',
+                    node['name'],
+                    node['rpc_host'],
+                    node['rpc_port'],
                     exc_info=True,
                 )
                 self.nodes.remove(node)
@@ -308,7 +313,7 @@ class Pool:
         for wallet in self.wallets:
             if wallet['ssl_dir']:
                 wallet['rpc_client'] = await WalletRpcClient.create(
-                    wallet['hostname'],
+                    wallet['rpc_host'],
                     uint16(wallet['rpc_port']),
                     pathlib.Path(wallet['ssl_dir']),
                     {
@@ -324,7 +329,7 @@ class Pool:
                 )
             else:
                 wallet['rpc_client'] = await WalletRpcClient.create(
-                    wallet['hostname'], uint16(wallet['rpc_port']), DEFAULT_ROOT_PATH, self.config
+                    wallet['rpc_host'], uint16(wallet['rpc_port']), DEFAULT_ROOT_PATH, self.config
                 )
             try:
                 wallet['synced'] = await wallet['rpc_client'].get_synced()
@@ -340,7 +345,13 @@ class Pool:
                 try:
                     node['blockchain_state'] = await node['rpc_client'].get_blockchain_state()
                 except aiohttp.client_exceptions.ClientConnectorError as e:
-                    self.log.error('Failing to connect to node %r, retrying in 2 seconds: %s', node['hostname'], e)
+                    self.log.error(
+                        'Failing to connect to node %r (%s:%s), retrying in 2 seconds: %s',
+                        node['name'],
+                        node['rpc_host'],
+                        node['rpc_port'],
+                        e
+                    )
                 else:
                     # use the first node enabled that is available
                     if not working_node:
@@ -482,7 +493,7 @@ class Pool:
             if not node['enabled']:
                 continue
             if not (node['blockchain_state'].get('sync') or {}).get('synced'):
-                logger.warning('Node %r not synced', node['hostname'])
+                logger.warning('Node %r not synced', node['name'])
                 continue
             if switch:
                 if node['rpc_client'] == self.node_rpc_client:
@@ -497,9 +508,9 @@ class Pool:
                         'Acceptable peak difference (%s, threshold: %s) between current node %r (peak: %s) and eligible node %r (peak: %s)',
                         node['blockchain_state']['peak'].height - higher_peak,
                         threshold_peak,
-                        current_node['hostname'],
+                        current_node['name'],
                         higher_peak,
-                        node['hostname'],
+                        node['name'],
                         node['blockchain_state']['peak'].height
                     )
                     continue
@@ -512,7 +523,7 @@ class Pool:
             return
 
         if self.node_rpc_client != current_node['rpc_client']:
-            self.log.warning('Switching to node %r', current_node['hostname'])
+            self.log.warning('Switching to node %r', current_node['name'])
             self.node_rpc_client = current_node['rpc_client']
 
         self.blockchain_state = current_node['blockchain_state']
@@ -521,7 +532,7 @@ class Pool:
 
     def node_state_to_dict(self, node, is_primary=False):
         return {
-            'hostname': node['hostname'],
+            'name': node['name'],
             'synced': (node['blockchain_state'].get('sync') or {}).get('synced', False),
             'peak_height': node['blockchain_state']['peak'].height if node['blockchain_state'].get('peak') else None,
             'mempool_full_pct': node.get('blockchain_mempool_full_pct', 0),
@@ -549,7 +560,7 @@ class Pool:
                         ) * 100)
                         node['available'] = True
                     except Exception:
-                        self.log.warning('Failed to get blockchain state for node %r', node['hostname'], exc_info=True)
+                        self.log.warning('Failed to get blockchain state for node %r', node['name'], exc_info=True)
                         node['available'] = False
                     else:
                         working_node = True
@@ -577,7 +588,10 @@ class Pool:
                         )
                     except aiohttp.client_exceptions.ClientConnectorError as e:
                         self.log.error(
-                            'Failed to connect to wallet %s: %s', wallet['fingerprint'], e
+                            'Failed to connect to wallet %r (fingerprint: %s): %s',
+                            wallet['name'],
+                            wallet['fingerprint'],
+                            e
                         )
 
                 asyncio.create_task(self.store.set_globalinfo({
@@ -586,6 +600,7 @@ class Pool:
                     'blockchain_avg_block_time': await self.get_average_block_time(),
                     'wallets': json.dumps([
                         {
+                            'name': i['name'],
                             'address': i['address'],
                             'balance': i['balance'],
                             'synced': i['synced'],
