@@ -1228,7 +1228,11 @@ class Pool:
                         self.log.info("Submitting payments")
 
                         try:
-                            await wallet['rpc_client'].push_transactions([transaction])
+                            await wallet['rpc_client'].push_transactions(
+                                txs=[transaction],
+                                fee=uint64(0),
+                                sign=False,
+                            )
                         except Exception as e:
                             self.log.error(f"Error during submit payments: {e}, retrying in 30 seconds", exc_info=True)
                             await asyncio.sleep(30)
