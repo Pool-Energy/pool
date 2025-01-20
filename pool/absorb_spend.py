@@ -72,7 +72,7 @@ async def spend_with_fee(
     if not spend_reward:
         # Use a wallet coin to spend for the fee
         balance = await wallet['rpc_client'].get_wallet_balance(wallet['id'])
-        transaction = await wallet['rpc_client'].create_signed_transaction([{
+        transaction = await wallet['rpc_client'].create_signed_transactions([{
             'puzzle_hash': wallet['puzzle_hash'],
             # Lets assume fee will never be higher than 0.05 XCH for abosrb
             'amount': 5 * 10 ** 10,
@@ -91,7 +91,7 @@ async def spend_with_fee(
 
         spend_coin = coin
 
-        transaction = await wallet['rpc_client'].create_signed_transaction(
+        transaction = await wallet['rpc_client'].create_signed_transactions(
             additions=[{'puzzle_hash': wallet['puzzle_hash'], 'amount': 0}],
             tx_config=DEFAULT_TX_CONFIG,
             coins=[spend_coin],
@@ -134,7 +134,7 @@ async def spend_with_fee(
         )
 
     if not spend_reward:
-        transaction = await wallet['rpc_client'].create_signed_transaction(
+        transaction = await wallet['rpc_client'].create_signed_transactions(
             additions=[{'puzzle_hash': wallet['puzzle_hash'], 'amount': spend_coin.amount - fee}],
             tx_config=DEFAULT_TX_CONFIG,
             coins=[spend_coin],
