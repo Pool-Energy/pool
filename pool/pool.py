@@ -1356,8 +1356,8 @@ class Pool:
         self,
         partial: PostPartialRequest,
         req_metadata: Optional[RequestMetadata],
-        time_received: uint64,
-        points_received: uint64,
+        time_received: float = 0.0,
+        points_received: int = 0
     ) -> None:
         if self.node_rpc_client is None:
             self.log.error("Node RPC client is not initialized, cannot confirm partial")
@@ -1588,7 +1588,11 @@ class Pool:
             pass
         return None
 
-    async def update_farmer(self, request: PutFarmerRequest, metadata: RequestMetadata) -> Dict:
+    async def update_farmer(
+        self,
+        request: PutFarmerRequest,
+        metadata: RequestMetadata,
+    ) -> Dict:
         launcher_id = request.payload.launcher_id
         # First check if this launcher_id is currently blocked for farmer updates, if so there is no reason to validate
         # all the stuff below
@@ -1671,7 +1675,9 @@ class Pool:
         return response_dict
 
     async def get_and_validate_singleton_state(
-        self, launcher_id: bytes32, raise_exc=False,
+        self,
+        launcher_id: bytes32,
+        raise_exc=False,
     ) -> Optional[Tuple[CoinSpend, PoolState, bool]]:
         """
         :return: the state of the singleton, if it currently exists in the blockchain, and if it is assigned to
@@ -1765,7 +1771,7 @@ class Pool:
         partial: PostPartialRequest,
         farmer_record: FarmerRecord,
         req_metadata: Optional[RequestMetadata],
-        time_received_partial: uint64,
+        time_received_partial: float = 999.999,
     ) -> Dict:
         # Validate signatures
         message: bytes32 = partial.payload.get_hash()
@@ -1773,7 +1779,7 @@ class Pool:
         pk2: G1Element = farmer_record.authentication_public_key
         valid_sig = AugSchemeMPL.aggregate_verify([pk1, pk2], [message, message], partial.aggregate_signature)
         peak_height = self.blockchain_state['peak'].height
-        partial_time_taken = 999.999
+        partial_time_taken: float = 999.999
 
         if farmer_record.launcher_id.hex() in self.launchers_banned:
             logger.warning(f"Farmer banned from the pool: {self.launchers_banned[farmer_record.launcher_id.hex()]}.")
@@ -1858,10 +1864,7 @@ class Pool:
                 PoolErrorCode.NOT_FOUND, f"Did not find signage point or EOS {partial.payload.sp_hash}, {response}"
             )
 
-        node_time_received_sp = response["time_received"]
-        partial_time_taken = time_received_partial - node_time_received_sp
-        logger.debug(f"Processing partial time taken in {partial_time_taken} second(s).")
-
+        partial_time_taken: float = time.time() - response["time_received"]
         signage_point: Optional[SignagePoint] = response.get("signage_point", None)
         end_of_sub_slot: Optional[EndOfSubSlotBundle] = response.get("eos", None)
 
