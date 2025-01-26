@@ -17,6 +17,7 @@ from chia.util.condition_tools import conditions_dict_for_solution
 from chia.util.ints import uint32, uint64
 from chia.util.hash import std_hash
 from chia.wallet.conditions import AssertCoinAnnouncement, Condition
+from chia.wallet.transaction_record import TransactionRecord
 from chia.wallet.derive_keys import master_sk_to_wallet_sk
 from chia.wallet.puzzles.p2_delegated_puzzle_or_hidden_puzzle import (
     DEFAULT_HIDDEN_PUZZLE_HASH,
@@ -71,31 +72,29 @@ async def spend_with_fee(
     else:
         raise RuntimeError(f"No wallet with puzzle hash {rewarded_coin.puzzle_hash.hex()} found")
 
-    # Spending the reward is broken!!!
     spend_reward = False
     if not spend_reward:
-        # Use a wallet coin to spend for the fee
-        balance = await wallet['rpc_client'].get_wallet_balance(wallet['id'])
-        transaction = await wallet['rpc_client'].create_signed_transactions([{
+        transaction: TransactionRecord = await wallet['rpc_client'].create_signed_transactions([{
             'puzzle_hash': wallet['puzzle_hash'],
-            # Lets assume fee will never be higher than 0.05 XCH for abosrb
             'amount': 5 * 10 ** 10,
         }], tx_config=ABSORB_TX_CONFIG)
 
-        # Find a coin that is big enough for the fee and also not a reward
-        for coin in transaction.spend_bundle.removals():
-            if (
-                coin.name() not in used_fee_coins and  # Do not use same coin twice between absorbs
-                coin.amount >= (absolute_fee or 200000000) and
-                coin.amount != calculate_pool_reward(uint32(1))
-            ):
-                break
+        if hasattr(transaction, 'spend_bundle'):
+            for coin in transaction.spend_bundle.removals():
+                if (
+                    coin.name() not in used_fee_coins and
+                    coin.amount >= (absolute_fee or 200000000) and
+                    coin.amount != calculate_pool_reward(uint32(1))
+                ):
+                    break
+            else:
+                raise NoCoinForFee("No coin big enough for a fee!")
         else:
-            raise NoCoinForFee("No coin big enough for a fee!")
+            raise NoCoinForFee("No spend bundle returned from the transaction!")
 
         spend_coin = coin
 
-        transaction = await wallet['rpc_client'].create_signed_transactions(
+        transaction: TransactionRecord = await wallet['rpc_client'].create_signed_transactions(
             additions=[{'puzzle_hash': wallet['puzzle_hash'], 'amount': 0}],
             tx_config=DEFAULT_TX_CONFIG,
             coins=[spend_coin],
