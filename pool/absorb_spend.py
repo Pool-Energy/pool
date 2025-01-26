@@ -1,4 +1,5 @@
 import logging
+
 from typing import Any, Dict, List, Optional
 from chia_rs import AugSchemeMPL, G2Element, PrivateKey
 
@@ -32,7 +33,12 @@ logger = logging.getLogger('absorb_spend')
 
 
 # FIXME: use https://github.com/Chia-Network/chia-blockchain/blob/c4f2595e54d75b844a85df2bf405335224cfc4af/chia/consensus/block_rewards.py#L19-L30
-COIN_SELECTION_CONFIG = CoinSelectionConfig(uint64(0), uint64(DEFAULT_CONSTANTS.MAX_COIN_AMOUNT), [uint64(0), uint64(875000000000)], [])
+COIN_SELECTION_CONFIG = CoinSelectionConfig(
+    uint64(0),
+    uint64(DEFAULT_CONSTANTS.MAX_COIN_AMOUNT),
+    [uint64(0), uint64(875000000000)],
+    []
+)
 ABSORB_TX_CONFIG = TXConfig(
     COIN_SELECTION_CONFIG.min_coin_amount,
     COIN_SELECTION_CONFIG.max_coin_amount,
@@ -63,9 +69,7 @@ async def spend_with_fee(
         if wallet['puzzle_hash'] == rewarded_coin.puzzle_hash:
             break
     else:
-        raise RuntimeError(
-            f'No wallet with puzzle hash {rewarded_coin.puzzle_hash.hex()} found.'
-        )
+        raise RuntimeError(f"No wallet with puzzle hash {rewarded_coin.puzzle_hash.hex()} found")
 
     # Spending the reward is broken!!!
     spend_reward = False
@@ -87,7 +91,7 @@ async def spend_with_fee(
             ):
                 break
         else:
-            raise NoCoinForFee('No coin big enough for a fee!')
+            raise NoCoinForFee("No coin big enough for a fee!")
 
         spend_coin = coin
 
@@ -129,9 +133,7 @@ async def spend_with_fee(
     fee = uint64((await get_cost(sb, peak_height, constants)) * mojos_per_cost)
 
     if fee > spend_coin.amount:
-        raise NoCoinForFee(
-            f'Selected fee coin lower than the spend fee ({fee} > {spend_coin.amount})!'
-        )
+        raise NoCoinForFee(f"Selected fee coin lower than the spend fee ({fee} > {spend_coin.amount})!")
 
     if not spend_reward:
         transaction = await wallet['rpc_client'].create_signed_transactions(
@@ -156,19 +158,28 @@ async def spend_with_fee(
         )
 
 
-async def create_spendbundle_with_fee(constants, private_key, puzzle_hash, puzzle, spends, spend_coin, p2_coin, fee):
+async def create_spendbundle_with_fee(
+    constants,
+    private_key,
+    puzzle_hash,
+    puzzle,
+    spends,
+    spend_coin,
+    p2_coin,
+    fee
+) -> SpendBundle:
     primaries: List[Dict[str, Any]] = [{
         'puzzlehash': puzzle_hash,
         'amount': spend_coin.amount - fee,
     }]
+
     message_list = [spend_coin.name()]
     for i in primaries:
         message_list.append(
             Coin(spend_coin.name(), i['puzzlehash'], i['amount']).name()
         )
-    message: bytes32 = std_hash(b"".join(message_list))
 
-    # Hack to use Wallet implementation of make_solution
+    message: bytes32 = std_hash(b"".join(message_list))
     wi = WalletInfo(0, '', 0, '')
     w = await Wallet.create(None, wi)
 
@@ -178,11 +189,13 @@ async def create_spendbundle_with_fee(constants, private_key, puzzle_hash, puzzl
         fee=fee,
         coin_announcements_to_assert={AssertCoinAnnouncement(asserted_id=p2_coin.name(), asserted_msg=bytes(b"$")).name()},
     )
+
     coin_spend = CoinSpend(
         spend_coin,
         SerializedProgram.from_bytes(bytes(puzzle)),
         SerializedProgram.from_bytes(bytes(solution)),
     )
+
     conditions_dict = conditions_dict_for_solution(
         coin_spend.puzzle_reveal, coin_spend.solution, constants.MAX_BLOCK_COST_CLVM
     )
@@ -190,6 +203,7 @@ async def create_spendbundle_with_fee(constants, private_key, puzzle_hash, puzzl
     synthetic_secret_key = calculate_synthetic_secret_key(
         private_key, DEFAULT_HIDDEN_PUZZLE_HASH
     )
+
     signatures = []
     for cwa in conditions_dict.get(ConditionOpcode.AGG_SIG_UNSAFE, []):
         msg = cwa.vars[1]

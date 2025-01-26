@@ -4,7 +4,11 @@ from chia.types.spend_bundle import SpendBundle
 from chia.util.ints import uint32
 
 
-async def get_cost(bundle: SpendBundle, height: uint32, constants) -> None:
+async def get_cost(
+    bundle: SpendBundle,
+    height: uint32,
+    constants
+) -> None:
     """
     Checks that the cost of the transaction does not exceed blockchain limits. As of version 1.1.2, the mempool limits
     transactions to 50% of the block limit, or 0.5 * 11000000000 = 5.5 billion cost.
@@ -19,7 +23,7 @@ async def get_cost(bundle: SpendBundle, height: uint32, constants) -> None:
     )
 
     if npc_result is not None and npc_result.error is not None:
-        raise RuntimeError(f'rpc result error: {npc_result.error}')
+        raise RuntimeError(f"RPC error: {npc_result.error}")
 
     cost = npc_result.cost
 

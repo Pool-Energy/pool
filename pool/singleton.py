@@ -2,6 +2,7 @@ import logging
 
 from typing import Dict, List, Optional, Tuple
 from chia_rs import G2Element
+
 from chia.consensus.block_record import BlockRecord
 from chia.consensus.coinbase import pool_parent_id
 from chia.consensus.constants import ConsensusConstants

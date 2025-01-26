@@ -52,14 +52,14 @@ class Launchers(object):
                     is_member = singleton_state_tuple[2]
 
                 if not is_member:
-                    logger.info('Launcher %s is no longer a pool member', launcher_id.hex())
+                    logger.info(f"Launcher {launcher_id.hex()} is no longer a pool member")
                     await self.pool.partials.remove_launcher(launcher_id)
                     await self.store.update_farmer(launcher_id, ['is_pool_member'], [False])
                 else:
-                    logger.info('Launcher %s is still a pool member', launcher_id.hex())
+                    logger.info(f"Launcher {launcher_id.hex()} is still a pool member")
 
             except asyncio.CancelledError:
-                logger.info("Cancelled launchers loop, closing")
+                logger.info("Cancelled launchers loop, stopping task")
                 return
             except Exception as e:
                 logger.error(f"Unexpected error in launchers loop: {e}", exc_info=True)
@@ -83,7 +83,7 @@ class Launchers(object):
             farmer_record: FarmerRecord = await self.pending_last_reward.get()
             lr = await self.last_reward_update(farmer_record)
             if lr:
-                logger.info('Last reward timestamp for %r: %r', farmer_record.launcher_id.hex(), lr)
+                logger.info(f"Last reward timestamp for {farmer_record.launcher_id.hex()}: {lr}")
             await asyncio.sleep(2)
 
     async def last_reward_update(self, farmer_record: FarmerRecord):
@@ -111,11 +111,7 @@ class Launchers(object):
             return int(coin.timestamp)
 
         except Exception:
-            logger.error(
-                'Failed to get last reward for %r',
-                farmer_record.launcher_id.hex(),
-                exc_info=True,
-            )
+            logger.error(f"Failed to get last reward for {farmer_record.launcher_id.hex()}", exc_info=True)
 
     async def start(self):
         self.singleton_loop_task = asyncio.create_task(self.singleton_loop())
