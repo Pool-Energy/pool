@@ -16,7 +16,7 @@ from chia.types.spend_bundle import SpendBundle
 from chia.util.condition_tools import conditions_dict_for_solution
 from chia.util.ints import uint32, uint64
 from chia.util.hash import std_hash
-from chia.wallet.conditions import AssertCoinAnnouncement, Condition
+from chia.wallet.conditions import AssertCoinAnnouncement
 from chia.wallet.transaction_record import TransactionRecord
 from chia.wallet.derive_keys import master_sk_to_wallet_sk
 from chia.wallet.puzzles.p2_delegated_puzzle_or_hidden_puzzle import (
@@ -77,7 +77,7 @@ async def spend_with_fee(
         transaction: TransactionRecord = await wallet['rpc_client'].create_signed_transactions([{
             'puzzle_hash': wallet['puzzle_hash'],
             'amount': 5 * 10 ** 10,
-        }], tx_config=ABSORB_TX_CONFIG)
+        }], tx_config=ABSORB_TX_CONFIG).signed_tx
 
         if hasattr(transaction, 'spend_bundle'):
             for coin in transaction.spend_bundle.removals():
@@ -100,7 +100,7 @@ async def spend_with_fee(
             coins=[spend_coin],
             coin_announcements=[AssertCoinAnnouncement(asserted_id=p2_coin.name(), asserted_msg=b"$")],
             fee=uint64(1),
-        )
+        ).signed_tx
 
         original_sb = SpendBundle(spends, G2Element())
         sb = SpendBundle.aggregate([original_sb, transaction.spend_bundle])
@@ -135,13 +135,13 @@ async def spend_with_fee(
         raise NoCoinForFee(f"Selected fee coin lower than the spend fee ({fee} > {spend_coin.amount})!")
 
     if not spend_reward:
-        transaction = await wallet['rpc_client'].create_signed_transactions(
+        transaction: TransactionRecord = await wallet['rpc_client'].create_signed_transactions(
             additions=[{'puzzle_hash': wallet['puzzle_hash'], 'amount': spend_coin.amount - fee}],
             tx_config=DEFAULT_TX_CONFIG,
             coins=[spend_coin],
             coin_announcements=[AssertCoinAnnouncement(asserted_id=p2_coin.name(), asserted_msg=b"$")],
             fee=uint64(fee),
-        )
+        ).signed_tx
         used_fee_coins.append(spend_coin.name())
         return SpendBundle.aggregate([original_sb, transaction.spend_bundle])
     else:
