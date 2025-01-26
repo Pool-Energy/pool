@@ -7,12 +7,13 @@ import os
 import signal
 import time
 import uvloop
-from typing import Dict, Callable, Optional
-
 import aiohttp
 import yaml
-from chia_rs import AugSchemeMPL, G2Element
+
+from typing import Dict, Callable, Optional
 from aiohttp import web
+from chia_rs import AugSchemeMPL, G2Element
+
 from chia.protocols.pool_protocol import (
     PoolErrorCode,
     GetFarmerResponse,
@@ -37,31 +38,34 @@ from .util import error_response, RequestMetadata
 plogger = logging.getLogger('partials')
 
 
-def allow_cors(response: web.Response) -> web.Response:
+def allow_cors(
+    response: web.Response
+) -> web.Response:
     response.headers["Access-Control-Allow-Origin"] = "*"
     return response
 
 
-def check_authentication_token(launcher_id: bytes32, token: uint64, timeout: uint8) -> Optional[web.Response]:
+def check_authentication_token(
+    launcher_id: bytes32,
+    token: uint64,
+    timeout: uint8
+) -> Optional[web.Response]:
     if not validate_authentication_token(token, timeout):
         return error_response(
             PoolErrorCode.INVALID_AUTHENTICATION_TOKEN,
-            f"authentication_token {token} invalid for farmer {launcher_id.hex()}.",
+            f"Invalid authentication_token {token} for farmer {launcher_id.hex()}",
         )
     return None
 
 
 class PoolServer:
     def __init__(self, pool_config_path: str):
-
-        # We load our configurations from here
         with open(pool_config_path) as f:
             pool_config: Dict = yaml.safe_load(f)
             pool_config['__path__'] = os.path.abspath(pool_config_path)
 
         self.log = logging.getLogger(__name__)
         self.pool = Pool(pool_config)
-
         self.pool_config = pool_config
         self.host = pool_config["server"]["server_host"]
         self.port = int(pool_config["server"]["server_port"])
@@ -79,11 +83,11 @@ class PoolServer:
                 if res_object is None:
                     res_object = {}
             except ConnectionResetError as e:
-                self.log.warning('Connection was reset by the client')
-                res_error = error_response(PoolErrorCode.SERVER_EXCEPTION, 'Connection was reset by the client')
+                self.log.warning("Connection was reset by the client")
+                res_error = error_response(PoolErrorCode.SERVER_EXCEPTION, "Connection was reset by the client")
                 return allow_cors(res_error)
             except Exception as e:
-                self.log.warning('Error while handling message', exc_info=True)
+                self.log.warning("Error while handling message", exc_info=True)
                 if len(e.args) > 0:
                     res_error = error_response(PoolErrorCode.SERVER_EXCEPTION, f"{e.args[0]}")
                 else:
@@ -112,13 +116,13 @@ class PoolServer:
         return obj_to_response(res)
 
     async def get_farmer(self, request_obj) -> web.Response:
-        # TODO(pool): add rate limiting
         launcher_id: bytes32 = hexstr_to_bytes(request_obj.rel_url.query["launcher_id"])
         authentication_token = uint64(request_obj.rel_url.query["authentication_token"])
 
         authentication_token_error: Optional[web.Response] = check_authentication_token(
             launcher_id, authentication_token, self.pool.authentication_token_timeout
         )
+
         if authentication_token_error is not None:
             return authentication_token_error
 
@@ -133,7 +137,6 @@ class PoolServer:
         else:
             target_puzzle_hash = self.pool.default_target_puzzle_hashes[0]
 
-        # Validate provided signature
         signature: G2Element = G2Element.from_bytes(hexstr_to_bytes(request_obj.rel_url.query["signature"]))
         message: bytes32 = std_hash(
             AuthenticationPayload(
@@ -143,6 +146,7 @@ class PoolServer:
                 authentication_token,
             )
         )
+
         if not AugSchemeMPL.verify(farmer_record.authentication_public_key, message, signature):
             return error_response(
                 PoolErrorCode.INVALID_SIGNATURE,
@@ -170,7 +174,6 @@ class PoolServer:
         )
 
     async def post_farmer(self, request_obj) -> web.Response:
-        # TODO(pool): add rate limiting
         post_farmer_request: PostFarmerRequest = PostFarmerRequest.from_json_dict(await request_obj.json())
 
         authentication_token_error = check_authentication_token(
@@ -178,6 +181,7 @@ class PoolServer:
             post_farmer_request.payload.authentication_token,
             self.pool.authentication_token_timeout,
         )
+
         if authentication_token_error is not None:
             return authentication_token_error
 
@@ -188,10 +192,10 @@ class PoolServer:
             f"post_farmer response {post_farmer_response}, "
             f"launcher_id: {post_farmer_request.payload.launcher_id.hex()}",
         )
+
         return obj_to_response(post_farmer_response)
 
     async def put_farmer(self, request_obj) -> web.Response:
-        # TODO(pool): add rate limiting
         put_farmer_request: PutFarmerRequest = PutFarmerRequest.from_json_dict(await request_obj.json())
 
         authentication_token_error = check_authentication_token(
@@ -199,6 +203,7 @@ class PoolServer:
             put_farmer_request.payload.authentication_token,
             self.pool.authentication_token_timeout,
         )
+
         if authentication_token_error is not None:
             return authentication_token_error
 
@@ -209,7 +214,6 @@ class PoolServer:
         return obj_to_response(put_farmer_response)
 
     async def post_partial(self, request_obj) -> web.Response:
-        # TODO(pool): add rate limiting
         start_time = time.time()
         request = await request_obj.json()
         partial: PostPartialRequest = PostPartialRequest.from_json_dict(request)
@@ -219,6 +223,7 @@ class PoolServer:
             partial.payload.authentication_token,
             self.pool.authentication_token_timeout,
         )
+
         if authentication_token_error is not None:
             return authentication_token_error
 
@@ -255,8 +260,8 @@ class PoolServer:
     async def switch_node(self):
         try:
             self.pool.set_healthy_node(switch=True)
-        except Exception:
-            plogger.error('Failed to switch node', exc_info=True)
+        except Exception as e:
+            plogger.error(f"Failed to switch node: {e}", exc_info=True)
 
 
 server: Optional[PoolServer] = None
@@ -268,6 +273,7 @@ async def start_pool_server(pool_config_path=None):
     global server
     global runner
     global run_forever_task
+
     server = PoolServer(pool_config_path)
     await server.start()
 
@@ -283,6 +289,7 @@ async def start_pool_server(pool_config_path=None):
             web.get("/login", server.get_login),
         ]
     )
+
     runner = aiohttp.web.AppRunner(app, access_log=None)
     await runner.setup()
     site = aiohttp.web.TCPSite(
@@ -301,6 +308,7 @@ async def start_pool_server(pool_config_path=None):
             await asyncio.sleep(3600)
 
     run_forever_task = asyncio.create_task(run_forever())
+
     try:
         await run_forever_task
     except asyncio.exceptions.CancelledError:

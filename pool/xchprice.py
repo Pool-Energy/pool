@@ -34,5 +34,5 @@ class XCHPrice(object):
                     await self.store.set_globalinfo({'xch_current_price': json.dumps(self.current_price)})
                     await self.store_ts.add_xchprice(self.current_price)
             except Exception as e:
-                logger.error('Failed to get XCH price from API: %s', e, exc_info=True)
+                logger.error(f"Failed to get XCH price from API: {e}", exc_info=True)
             await asyncio.sleep(120)
