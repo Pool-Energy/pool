@@ -160,6 +160,7 @@ async def create_absorb_transaction(
     peak_height: uint32,
     reward_coin_records: List[CoinRecord],
     fee: AbsorbFee,
+    mempool_fee_threshold: Optional[int],
     absolute_fee: Optional[int],
     used_fee_coins: Optional[List],
     mempool_full_pct: int,
@@ -209,10 +210,8 @@ async def create_absorb_transaction(
         return None
 
     if fee == AbsorbFee.AUTO:
-        with_fee = mempool_full_pct > 10
-        logger.info(
-            'Absorb fee is AUTO. Mempool is %d%% full. Fees: %r', mempool_full_pct, with_fee,
-        )
+        with_fee = mempool_full_pct > mempool_fee_threshold
+        logger.info(f'Absorb fee is AUTO. Mempool is {mempool_full_pct}% full, and greater than {mempool_fee_threshold}% threshold. Fees: {with_fee}')
     else:
         with_fee = fee == AbsorbFee.TRUE
 
