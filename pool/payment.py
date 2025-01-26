@@ -5,8 +5,8 @@ from decimal import Decimal as D
 from typing import Dict, List, Tuple
 from chia.rpc.wallet_rpc_client import WalletRpcClient
 from chia.util.ints import uint64
-from chia.wallet.util.tx_config import DEFAULT_TX_CONFIG
 from chia.wallet.transaction_record import TransactionRecord
+from chia.wallet.util.tx_config import DEFAULT_TX_CONFIG
 
 from .fee import get_cost
 from .util import (
@@ -31,9 +31,10 @@ async def subtract_fees(
     transaction: TransactionRecord = await wallet_rpc_client.create_signed_transactions(
         additions=additions,
         tx_config=DEFAULT_TX_CONFIG,
-    ).signed_tx
-
-    total_cost = (await get_cost(transaction.spend_bundle, height, constants)) * mojos_per_cost
+    )
+    total_cost = (await get_cost(
+        transaction.spend_bundle, height, constants
+    )) * mojos_per_cost
     cost_per_target = math.ceil(D(total_cost) / D(len(payment_targets)))
 
     for targets in payment_targets.values():

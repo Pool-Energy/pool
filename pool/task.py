@@ -9,17 +9,12 @@ def task_exception(coro):
         try:
             await coro(*args, **kwargs)
         except Exception:
-            logger.error(f"Task {coro} failed", exc_info=True)
+            logger.error('Task %r failed', coro, exc_info=True)
     return wrapper
 
 
 @task_exception
-async def common_loop(
-    method,
-    init_coro=None,
-    sleep=None,
-    log=None
-) -> None:
+async def common_loop(method, init_coro=None, sleep=None, log=None):
     if log is None:
         log = logger
 
@@ -32,8 +27,8 @@ async def common_loop(
             if sleep:
                 await asyncio.sleep(sleep)
         except asyncio.CancelledError:
-            log.info(f"Cancelled {method.__name__}, stopping task")
+            log.info(f'Cancelled {method.__name__}, closing')
             return
-        except Exception as e:
-            log.error(f"Unexpected error in {method.__name__}: {e}", exc_info=True)
+        except Exception:
+            log.error(f'Unexpected error in {method.__name__}', exc_info=True)
             await asyncio.sleep(5)

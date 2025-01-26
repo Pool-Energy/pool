@@ -9,7 +9,7 @@ from chia.protocols.pool_protocol import PoolErrorCode, ErrorResponse
 from chia.util.ints import uint16
 from chia.util.json_util import obj_to_response
 from chia.wallet.util.tx_config import DEFAULT_TX_CONFIG
-from chia.wallet.transaction_record import TransactionRecord
+from chia.rpc.wallet_request_types import CreateSignedTransactionsResponse
 
 logger = logging.getLogger('util')
 
@@ -128,14 +128,14 @@ async def create_transaction(
     additions,
     fee,
     payment_targets,
-) -> TransactionRecord:
+) -> CreateSignedTransactionsResponse:
     if wallet.get('use_reward_coin', True) is False:
-        transaction: TransactionRecord = await wallet['rpc_client'].create_signed_transactions(
+        transaction: CreateSignedTransactionsResponse = await wallet['rpc_client'].create_signed_transactions(
             additions,
             tx_config=DEFAULT_TX_CONFIG,
             fee=fee,
-        ).signed_tx
-        return transaction
+        )
+        return transaction.signed_tx
 
     # Lets get all coins rewards that are associated with the payouts in this round
     payout_ids = set()
@@ -157,23 +157,23 @@ async def create_transaction(
     # If no reward coins are spent we can use them as sole source coins for the transaction
     # If there is a fee we will need additional coin. (FIXME)
     if len(coin_records) == len(unspent_coins) and fee == 0:
-        transaction: TransactionRecord = await wallet['rpc_client'].create_signed_transactions(
+        transaction: CreateSignedTransactionsResponse = await wallet['rpc_client'].create_signed_transactions(
             additions,
             tx_config=DEFAULT_TX_CONFIG,
             coins=list(unspent_coins),
             fee=fee,
-        ).signed_tx
-        return transaction
+        )
+        return transaction.signed_tx
 
     # If a coin was spent we give a shot for the Wallet automatically select the required coins
-    transaction: TransactionRecord = await wallet['rpc_client'].create_signed_transactions(
+    transaction: CreateSignedTransactionsResponse = await wallet['rpc_client'].create_signed_transactions(
         additions,
         tx_config=DEFAULT_TX_CONFIG,
         fee=fee,
-    ).signed_tx
+    )
 
     ph_coins, non_ph_coins = check_transaction(
-        transaction,
+        transaction.signed_tx,
         wallet['puzzle_hash']
     )
 
@@ -185,7 +185,7 @@ async def create_transaction(
         total_additions = sum(a['amount'] for a in additions)
         total_coins = sum(int(c.amount) for c in list(unspent_coins) + list(non_ph_coins))
         if total_additions + fee <= total_coins:
-            transaction: TransactionRecord = await wallet['rpc_client'].create_signed_transactions(
+            transaction: CreateSignedTransactionsResponse = await wallet['rpc_client'].create_signed_transactions(
                 additions,
                 tx_config=DEFAULT_TX_CONFIG,
                 coins=list(unspent_coins) + list(non_ph_coins),
@@ -215,14 +215,13 @@ async def create_transaction(
                         break
             else:
                 raise RuntimeError(f'Not enough non puzzle hash coins for payment. Remaining amount: {amount_missing}')
-            transaction: TransactionRecord = await wallet['rpc_client'].create_signed_transactions(
+            transaction: CreateSignedTransactionsResponse = await wallet['rpc_client'].create_signed_transactions(
                 additions,
                 tx_config=DEFAULT_TX_CONFIG,
                 coins=list(unspent_coins) + list(non_ph_coins),
                 fee=fee,
             )
-
-    return transaction
+    return transaction.signed_tx
 
 
 def days_pooling(

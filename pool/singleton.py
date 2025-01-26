@@ -1,6 +1,6 @@
+from typing import Dict, List, Optional, Tuple
 import logging
 
-from typing import Dict, List, Optional, Tuple
 from chia_rs import G2Element
 
 from chia.consensus.block_record import BlockRecord
@@ -37,16 +37,10 @@ class LastSpendCoinNotFound(Exception):
         self.last_not_none_state = last_not_none_state
 
 
-async def get_coin_spend(
-    node_rpc_client: FullNodeRpcClient,
-    coin_record: CoinRecord
-) -> Optional[CoinSpend]:
+async def get_coin_spend(node_rpc_client: FullNodeRpcClient, coin_record: CoinRecord) -> Optional[CoinSpend]:
     if not coin_record.spent:
         return None
-    return await node_rpc_client.get_puzzle_and_solution(
-        coin_record.coin.name(),
-        coin_record.spent_block_index
-    )
+    return await node_rpc_client.get_puzzle_and_solution(coin_record.coin.name(), coin_record.spent_block_index)
 
 
 def validate_puzzle_hash(
@@ -75,7 +69,7 @@ async def get_singleton_state(
         if farmer_record is None:
             launcher_coin: Optional[CoinRecord] = await node_rpc_client.get_coin_record_by_name(launcher_id)
             if launcher_coin is None:
-                logger.warning(f"Can't find genesis coin {launcher_id}")
+                logger.warning(f"Can not find genesis coin {launcher_id}")
                 return None
             if not launcher_coin.spent:
                 logger.warning(f"Genesis coin {launcher_id} not spent")
@@ -99,9 +93,9 @@ async def get_singleton_state(
         if last_coin_record is None:
             if raise_exc:
                 raise LastSpendCoinNotFound(last_not_none_state)
-            logger.info(f"Last spend coin record for {launcher_id.hex()} is None")
+            logger.info('Last spend coin record for %s is None', launcher_id.hex())
             if last_not_none_state:
-                logger.info(f"Last pool url {last_not_none_state.pool_url}")
+                logger.info('Last pool url %s', last_not_none_state.pool_url)
             return None
 
         while True:
@@ -146,10 +140,7 @@ async def get_singleton_state(
         return None
 
 
-def get_farmed_height(
-    reward_coin_record: CoinRecord,
-    genesis_challenge: bytes32
-) -> Optional[uint32]:
+def get_farmed_height(reward_coin_record: CoinRecord, genesis_challenge: bytes32) -> Optional[uint32]:
     # Returns the height farmed if it's a coinbase reward, otherwise None
     for block_index in range(
         reward_coin_record.confirmed_block_index, reward_coin_record.confirmed_block_index - 128, -1
@@ -169,7 +160,6 @@ async def create_absorb_transaction(
     peak_height: uint32,
     reward_coin_records: List[CoinRecord],
     fee: AbsorbFee,
-    mempool_fee_threshold: Optional[int],
     absolute_fee: Optional[int],
     used_fee_coins: Optional[List],
     mempool_full_pct: int,
@@ -180,14 +170,14 @@ async def create_absorb_transaction(
         node_rpc_client, farmer_record.launcher_id, farmer_record, peak_height, 0, constants.GENESIS_CHALLENGE
     )
     if singleton_state_tuple is None:
-        logger.info(f"Invalid singleton {farmer_record.launcher_id}")
+        logger.info(f"Invalid singleton {farmer_record.launcher_id}.")
         return None
     last_spend, last_state, last_state_2 = singleton_state_tuple
     # Here the buried state is equivalent to the latest state, because we use 0 as the security_threshold
     assert last_state == last_state_2
 
     if last_state.state == PoolSingletonState.SELF_POOLING:
-        logger.info(f"Don't try to absorb from farmer {farmer_record.launcher_id}")
+        logger.info(f"Don't try to absorb from former farmer {farmer_record.launcher_id}.")
         return None
 
     launcher_coin_record: Optional[CoinRecord] = await node_rpc_client.get_coin_record_by_name(
@@ -200,7 +190,7 @@ async def create_absorb_transaction(
         found_block_index: Optional[uint32] = get_farmed_height(reward_coin_record, constants.GENESIS_CHALLENGE)
         if not found_block_index:
             # The puzzle does not allow spending coins that are not a coinbase reward
-            logger.info(f"Received reward {reward_coin_record.coin} that is not a pool reward")
+            logger.info(f"Received reward {reward_coin_record.coin} that is not a pool reward.")
             continue
 
         absorb_spend: List[CoinSpend] = create_absorb_spend(
@@ -219,8 +209,10 @@ async def create_absorb_transaction(
         return None
 
     if fee == AbsorbFee.AUTO:
-        with_fee = mempool_full_pct > mempool_fee_threshold
-        logger.info(f"Absorb fee is AUTO. Mempool is {mempool_full_pct}% full, and greater than {mempool_fee_threshold}% threshold. Transaction fees is {with_fee}")
+        with_fee = mempool_full_pct > 10
+        logger.info(
+            'Absorb fee is AUTO. Mempool is %d%% full. Fees: %r', mempool_full_pct, with_fee,
+        )
     else:
         with_fee = fee == AbsorbFee.TRUE
 
@@ -241,16 +233,21 @@ async def create_absorb_transaction(
 
 
 async def find_reward_from_coinrecord(
-    node_rpc_client: FullNodeRpcClient,
-    store, coin_record: CoinRecord,
+    node_rpc_client: FullNodeRpcClient, store, coin_record: CoinRecord,
 ) -> Optional[Tuple[CoinRecord, FarmerRecord]]:
-    farmer: FarmerRecord = await store.get_farmer_record_from_singleton(coin_record.coin.parent_coin_info)
+
+    farmer: FarmerRecord = await store.get_farmer_record_from_singleton(
+        coin_record.coin.parent_coin_info
+    )
+
     if not farmer:
         return None
 
     block_record: BlockRecord = await node_rpc_client.get_block_record_by_height(coin_record.confirmed_block_index)
     if block_record.is_transaction_block:
-        additions, removals = await node_rpc_client.get_additions_and_removals(block_record.header_hash)
+        additions, removals = await node_rpc_client.get_additions_and_removals(
+            block_record.header_hash
+        )
         for cr in additions:
             if cr.name == coin_record.name:
                 break
@@ -268,9 +265,9 @@ async def find_last_reward_from_launcher(
     farmer: FarmerRecord,
     current_reward_timestamp: uint64,
 ) -> Optional[CoinRecord]:
+
     end = int(current_reward_timestamp) - 1
     last_reward = None
-
     while end > 0:
         start = end - 50000
         if start < 0:
