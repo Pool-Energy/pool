@@ -10,6 +10,7 @@ import uvloop
 import aiohttp
 import yaml
 
+from urllib.parse import urlparse
 from typing import Dict, Callable, Optional
 from aiohttp import web
 from chia_rs import AugSchemeMPL, G2Element
@@ -95,8 +96,12 @@ class PoolServer:
 
         return inner
 
-    async def index(self, _) -> web.Response:
-        return web.Response(text="Pool.Energy pool")
+    async def index(self, request_obj) -> web.Response:
+        pooltext = "Pool.Energy pool"
+        hostname = urlparse(str(request_obj.url)).hostname or None
+        if hostname:
+            pooltext += f" (from {hostname})"
+        return web.Response(text=pooltext)
 
     async def get_pool_info(self, _) -> web.Response:
         res: GetPoolInfoResponse = GetPoolInfoResponse(
