@@ -560,14 +560,14 @@ class Pool:
                             node['blockchain_state']['mempool_max_total_cost']
                         ) * 100)
                         node['available'] = True
-                    except Exception:
-                        self.log.warning('Failed to get blockchain state for node %r', node['name'], exc_info=True)
+                    except Exception as e:
+                        self.log.error(f"Failed to get blockchain state for node {node['name']}: {e}", exc_info=True)
                         node['available'] = False
                     else:
                         working_node = True
 
                 if not working_node:
-                    self.log.error('Unable to get blockchain state from any node.')
+                    self.log.critical('Unable to get blockchain state from any node')
                     await asyncio.sleep(10)
                     continue
 
