@@ -333,7 +333,7 @@ class Pool:
                     wallet['rpc_host'], uint16(wallet['rpc_port']), DEFAULT_ROOT_PATH, self.config
                 )
             try:
-                wallet['synced'] = await wallet['rpc_client'].get_synced()
+                wallet['synced'] = (await wallet['rpc_client'].get_sync_status()).synced
             except Exception:
                 wallet['synced'] = False
 
@@ -581,9 +581,9 @@ class Pool:
                 # Get the wallets as last since its not absolutely critical for pool operation
                 for wallet in self.wallets:
                     try:
-                        wallet['synced'] = await wallet['rpc_client'].get_synced()
-                        wallet['syncing'] = await wallet['rpc_client'].get_sync_status()
-                        wallet['height'] = await wallet['rpc_client'].get_height_info()
+                        wallet['synced'] = (await wallet['rpc_client'].get_sync_status()).synced
+                        wallet['syncing'] = (await wallet['rpc_client'].get_sync_status()).syncing
+                        wallet['height'] = (await wallet['rpc_client'].get_height_info()).height
                         wallet['balance'] = await wallet['rpc_client'].get_wallet_balance(
                             str(wallet['id'])
                         )
@@ -1239,14 +1239,14 @@ class Pool:
                         self.log.info(f"Details of transaction: {transaction}")
                         await self.store.add_transaction(transaction, payment_targets)
 
-                    peak_height = await wallet['rpc_client'].get_height_info()
+                    peak_height = (await wallet['rpc_client'].get_height_info()).height
                     while (
                         not transaction.confirmed or not (
                             peak_height - transaction.confirmed_at_height
                         ) > self.confirmation_security_threshold
                     ):
                         transaction = await wallet['rpc_client'].get_transaction(transaction.name)
-                        peak_height = await wallet['rpc_client'].get_height_info()
+                        peak_height = (await wallet['rpc_client'].get_height_info()).height
                         self.log.info(f"Waiting for transaction to obtain {self.confirmation_security_threshold} confirmations")
                         if not transaction.confirmed:
                             is_in_mempool = transaction.is_in_mempool()
