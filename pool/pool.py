@@ -1235,7 +1235,7 @@ class Pool:
                             push_request = PushTransactions(txs=[transaction])
                             await wallet['rpc_client'].push_transactions(
                                 request=push_request,
-                                tx_config=DEFAULT_TX_CONFIG
+                                tx_config=DEFAULT_TX_CONFIG,
                                 timelock_info=ConditionValidTimes(),
                             )
                         except Exception as e:
