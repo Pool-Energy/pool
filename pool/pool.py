@@ -1262,9 +1262,11 @@ class Pool:
                                 if not is_in_mempool:
                                     push_tx_response: Dict = await self.node_rpc_client.push_tx(transaction.spend_bundle)
                                     if push_tx_response["status"] != "SUCCESS":
-                                        self.log.error(f"Error submitting transaction: {push_tx_response}")
+                                        self.log.error(f"Error submitting transaction {push_tx_response}")
+                                    if "ALREADY_INCLUDING_TRANSACTION" in push_tx_response["error"]:
+                                        self.log.error(f"Already submitted transaction {push_tx_response}, but not in mempool")
                             except Exception:
-                                self.log.error("Error pushing payment directly to node", exc_info=True)
+                                self.log.error("Error pushing transaction to node", exc_info=True)
                         else:
                             self.log.info(f"Confirmations: {peak_height - transaction.confirmed_at_height}/{self.confirmation_security_threshold}")
                         await asyncio.sleep(10)
