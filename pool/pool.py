@@ -971,16 +971,16 @@ class Pool:
                         # if enabled, check gigahorse fee from farmer puzzle hash (false by default)
                         gigahorse_fee = False
                         if self.pool_config['fee']['gigahorse']['check_enabled']:
-                            farmer_puzzle_hash = await self.node_rpc_client.get_block_record_by_height(
-                                int.from_bytes(bytes(reward.coin.parent_coin_info)[16:], 'big')
-                            )
+                            block_height = int.from_bytes(bytes(reward.coin.parent_coin_info)[16:], 'big')
+                            farmer_puzzle_hash = await self.node_rpc_client.get_block_record_by_height(block_height)
+
                             if farmer_puzzle_hash is None:
-                                self.log.info(f"Block {int.from_bytes(bytes(reward.coin.parent_coin_info)[16:], 'big')}, unknown farmer reward")
+                                self.log.info(f"Block {block_height}, unknown farmer reward")
                             elif str(farmer_puzzle_hash.farmer_puzzle_hash) == str(self.pool_config['fee']['gigahorse']['farmer_puzzle_hash']):
-                                self.log.info(f"Block {int.from_bytes(bytes(reward.coin.parent_coin_info)[16:], 'big')}, farmer reward has been taken by {farmer_puzzle_hash.farmer_puzzle_hash} (Gigahorse fee)")
+                                self.log.info(f"Block {block_height}, farmer reward has been taken by {farmer_puzzle_hash.farmer_puzzle_hash} (Gigahorse fee)")
                                 gigahorse_fee = True
                             else:
-                                self.log.info(f"Block {int.from_bytes(bytes(reward.coin.parent_coin_info)[16:], 'big')}, farmer reward has been taken by {farmer_puzzle_hash.farmer_puzzle_hash}")
+                                self.log.info(f"Block {block_height}, farmer reward has been taken by {farmer_puzzle_hash.farmer_puzzle_hash}")
 
                         # insert block into database
                         await self.store.add_block(
@@ -1828,7 +1828,7 @@ class Pool:
 
         # Verify chia version and refuse partials if the version is not supported by pool
         if not self.testnet and req_metadata and chia_version_current_using and chia_version_refuse_before:
-            if Version(chia_version_current_using) <= Version(chia_version_refuse_before):
+            if Version(chia_version_current_using) < Version(chia_version_refuse_before):
                 await self.partials.add_partial(
                     partial.payload,
                     req_metadata,
