@@ -1823,7 +1823,7 @@ class Pool:
             )
 
         # Define chia version
-        chia_version_current_using: str = '.'.join(req_metadata.get_chia_version().split('.', 3)[:3])
+        chia_version_current_using: str = (req_metadata.get_chia_version()).base_version
         chia_version_refuse_before: str = self.pool_config["launchers_min_version"] if "launchers_min_version" in self.pool_config else None
 
         # Verify chia version and refuse partials if the version is not supported by pool
