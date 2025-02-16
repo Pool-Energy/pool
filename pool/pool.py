@@ -1232,7 +1232,7 @@ class Pool:
                         self.log.info("Submitting payments")
 
                         try:
-                            push_request = PushTransactions(txs=[transaction])
+                            push_request = PushTransactions(transactions=[transaction])
                             await wallet['rpc_client'].push_transactions(
                                 request=push_request,
                                 tx_config=DEFAULT_TX_CONFIG,
