@@ -1261,8 +1261,11 @@ class Pool:
                             try:
                                 if not is_in_mempool:
                                     push_tx_response: Dict = await self.node_rpc_client.push_tx(transaction.spend_bundle)
-                                    if push_tx_response["status"] != "SUCCESS":
-                                        self.log.error(f"Error submitting transaction {push_tx_response}")
+                                    if not push_tx_response['success'] and push_tx_response['error']:
+                                        if 'ALREADY_INCLUDING_TRANSACTION' in push_tx_response['error']:
+                                            self.log.warning(f"Transaction {transaction.name} is already submitted (but not in mempool)")
+                                        else:
+                                            self.log.error(f"Error submitting transaction {transaction.name}: {push_tx_response['error']}")
                             except Exception:
                                 self.log.error("Error pushing transaction to node", exc_info=True)
                         else:
