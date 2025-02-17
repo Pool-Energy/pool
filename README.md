@@ -1,5 +1,3 @@
-## Pool.Energy Pool Implementation
+# Pool.Energy - Pool
 
-This code is based on [pool-reference](https://github.com/Chia-Network/pool-reference) code from Chia and OpenChia.
-
-It has been modified to provide more funcionalities required by a production pool.
+> A fork from [OpenChia Pool](https://github.com/openchia/pool) sources.

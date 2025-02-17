@@ -4,8 +4,6 @@
 
 FROM debian:bookworm-slim
 
-ARG GITHUB_TOKEN
-
 RUN apt-get update && \
     apt-get upgrade -y && \
     apt-get install -y \

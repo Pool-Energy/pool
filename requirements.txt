@@ -1,4 +1,4 @@
-git+https://${GITHUB_TOKEN}@github.com/pool-energy/chia-blockchain.git@stable/2.5
+git+https://github.com/pool-energy/chia-blockchain.git@stable/2.5
 chia_rs>=0.16.0
 setuptools>=75.1.0
 uvloop~=0.21.0
