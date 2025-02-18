@@ -1838,7 +1838,7 @@ class Pool:
 
         # Verify chia version and refuse partials if the version is not supported by pool
         if not self.testnet and req_metadata and chia_version_current_using and chia_version_refuse_before:
-            if Version(chia_version_current_using).release < Version(chia_version_refuse_before).release:
+            if Version(chia_version_current_using) < Version(chia_version_refuse_before):
                 await self.partials.add_partial(
                     partial.payload,
                     req_metadata,
