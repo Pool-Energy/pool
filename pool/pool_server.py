@@ -215,10 +215,26 @@ class PoolServer:
         return obj_to_response(put_farmer_response)
 
     async def post_partial(self, request_obj) -> web.Response:
-        # TODO(pool): add rate limiting
         start_time = time.time()
         request = await request_obj.json()
-        partial: PostPartialRequest = PostPartialRequest.from_json_dict(request)
+
+        try:
+            partial: PostPartialRequest = PostPartialRequest.from_json_dict(request)
+        except ValueError as e:
+            error = True
+            if not request['payload']['proof_of_space']['proof'].startswith('0x'):
+                request['payload']['proof_of_space']['proof'] = '0x' + request['payload']['proof_of_space']['proof']
+                try:
+                    partial: PostPartialRequest = PostPartialRequest.from_json_dict(request)
+                    error = False
+                except Exception:
+                    pass
+            if error:
+                plogger.error(f"Failed to load partial: {request}: {e}")
+                return error_response(
+                    PoolErrorCode.REQUEST_FAILED,
+                    f"Invalid partial: {e}"
+                )
 
         authentication_token_error = check_authentication_token(
             partial.payload.launcher_id,
