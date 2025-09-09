@@ -377,9 +377,9 @@ class Pool:
                 res = await wallet['rpc_client'].log_in(login_request)
                 if not res:
                     raise ValueError("Error wallet logging. Make sure your config fingerprint %r is correct.", wallet['fingerprint'])
-                self.log.info(f"Logging in: {res.fingerprint}")
+                self.log.info(f"Connected to wallet {wallet['name']} (fingerprint: {wallet['fingerprint']})")
                 res = await wallet['rpc_client'].get_wallet_balance(wallet['id'])
-                self.log.info(f"Obtaining balance: {res}")
+                self.log.info(f"Obtaining wallet details: {res}")
         except aiohttp.client_exceptions.ClientConnectorError as e:
             self.log.error('Failed to connect to the wallet %s: %s', wallet['fingerprint'], e)
 
