@@ -222,18 +222,38 @@ class PostgresqlPoolStore(object):
         partial_payload: PostPartialPayload,
         req_metadata: Optional[RequestMetadata],
     ) -> None:
+        if not (partial_payload or req_metadata):
+            return
+
+        launcher_id = partial_payload.launcher_id.hex()
+        harvester_id = partial_payload.harvester_id.hex()
+        harvester_version = (str((req_metadata.get_chia_version() or ''))[:20] or None) if req_metadata else None
+
+        if not (launcher_id or harvester_id or harvester_version):
+            return
+
         async with self.pool.acquire() as conn:
             async with conn.cursor() as cursor:
-                await self._execute(
-                    "INSERT INTO harvester (launcher, harvester, version) VALUES (%s, %s, %s) "
-                    "ON CONFLICT (launcher, harvester) DO UPDATE SET version=%s",
-                    (
-                        partial_payload.launcher_id.hex(),
-                        partial_payload.harvester_id.hex(),
-                        (str((req_metadata.get_chia_version() or ''))[:20] or None) if req_metadata else None,
-                        (str((req_metadata.get_chia_version() or ''))[:20] or None) if req_metadata else None,
-                    )
+                await cursor.execute(
+                    "SELECT version FROM harvester"
+                    " WHERE launcher = %s AND harvester = %s",
+                    (launcher_id, harvester_id)
                 )
+                data = await cursor.fetchone()
+                if not data:
+                    await cursor.execute(
+                        "INSERT INTO harvester (launcher, harvester, version)"
+                        " VALUES (%s, %s, %s)",
+                        (launcher_id, harvester_id, harvester_version)
+                    )
+                else:
+                    (version) = data
+                    if version != harvester_version:
+                        await cursor.execute(
+                            "UPDATE harvester SET version = %s"
+                            " WHERE launcher = %s AND harvester = %s",
+                            (harvester_version, launcher_id, harvester_id)
+                        )
 
     async def update_singleton(
         self,
