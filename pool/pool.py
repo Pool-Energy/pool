@@ -388,12 +388,22 @@ class Pool:
         self.confirm_partials_loop_task = asyncio.create_task(self.confirm_partials_loop())
         self.collect_pool_rewards_loop_task = asyncio.create_task(self.collect_pool_rewards_loop())
         for wallet in self.wallets:
-            self.create_payment_loop_tasks.append(
-                asyncio.create_task(self.create_payment_loop(wallet))
-            )
-            self.submit_payment_loop_tasks.append(
-                asyncio.create_task(self.submit_payment_loop(wallet))
-            )
+            if wallet['use_reward_coin']:
+                self.log.info(
+                    "Starting payment tasks for wallet %s (fingerprint: %s)",
+                    wallet['name'], wallet['fingerprint']
+                )
+                self.create_payment_loop_tasks.append(
+                    asyncio.create_task(self.create_payment_loop(wallet))
+                )
+                self.submit_payment_loop_tasks.append(
+                    asyncio.create_task(self.submit_payment_loop(wallet))
+                )
+            else:
+                self.log.info(
+                    "Wallet %s is not configured to use reward coins, skipping (fingerprint: %s)",
+                    wallet['name'], wallet['fingerprint']
+                )
         self.get_peak_loop_task = asyncio.create_task(self.get_peak_loop())
 
         self.launchers = Launchers(self)
