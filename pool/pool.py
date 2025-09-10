@@ -264,6 +264,7 @@ class Pool:
                 'ssl_dir': node.get('ssl_dir'),
                 'location': node.get('location', 'unknown'),
                 'region': node.get('region', 'unknown'),
+                'priority': node.get('priority', 50),
                 'enabled': node.get('enabled', True),
                 'available': True,
                 'rpc_client': None,
@@ -505,6 +506,7 @@ class Pool:
     def set_healthy_node(self, switch=False, threshold_peak=2):
         higher_peak = None
         current_node = None
+        best_priority = None
 
         for node in self.nodes:
             if not node['enabled']:
@@ -515,32 +517,42 @@ class Pool:
             if switch:
                 if node['rpc_client'] == self.node_rpc_client:
                     continue
-            if higher_peak is None:
-                higher_peak = node['blockchain_state']['peak'].height
+
+            node_priority = node['priority']
+            node_peak = node['blockchain_state']['peak'].height
+
+            if current_node is None:
                 current_node = node
-            elif node['blockchain_state']['peak'].height > higher_peak:
-                # return a warning only if acceptable peak threshold
-                if abs(node['blockchain_state']['peak'].height - higher_peak) <= threshold_peak:
-                    logger.warning(
-                        'Acceptable peak difference (%s, threshold: %s) between current node %r (peak: %s) and eligible node %r (peak: %s)',
-                        node['blockchain_state']['peak'].height - higher_peak,
-                        threshold_peak,
-                        current_node['name'],
-                        higher_peak,
-                        node['name'],
-                        node['blockchain_state']['peak'].height
-                    )
-                    continue
-                else:
-                    higher_peak = node['blockchain_state']['peak'].height
-                    current_node = node
+                higher_peak = node_peak
+                best_priority = node_priority
+
+            peak_difference = abs(node_peak - higher_peak)
+
+            # lower number is better priority, with acceptable peak difference
+            if (node_priority <= best_priority) and (peak_difference <= threshold_peak):
+                current_node = node
+                higher_peak = node_peak
+                best_priority = node_priority
+            # only switch to higher priority if peak difference is more than threshold
+            elif (node_priority > best_priority) and (peak_difference > threshold_peak):
+                current_node = node
+                higher_peak = node_peak
+                best_priority = node_priority
 
         if current_node is None:
-            self.log.critical('No healthy node available')
+            self.log.critical("No healthy node available")
             return
 
         if self.node_rpc_client != current_node['rpc_client']:
-            self.log.warning('Switching to node %r', current_node['name'])
+            logger.warning(
+                "Switching to node %r with better peak difference"
+                " (priority: %s, peak: %s, difference: %s, threshold: %s)",
+                current_node['name'],
+                current_node['priority'],
+                node_peak,
+                peak_difference,
+                threshold_peak,
+            )
             self.node_rpc_client = current_node['rpc_client']
 
         self.blockchain_state = current_node['blockchain_state']
@@ -557,6 +569,7 @@ class Pool:
             'region': node.get('region', 'unknown'),
             'enabled': node.get('enabled', True),
             'available': node.get('available', True),
+            'priority': node.get('priority', 50),
             'primary': is_primary,
         }
 
