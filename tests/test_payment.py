@@ -1,10 +1,12 @@
 import copy
 import pytest
+
 from decimal import Decimal as D, localcontext
 from unittest.mock import patch, AsyncMock
 
 from pool.payment import subtract_fees, create_share
 from pool.util import payment_targets_to_additions
+
 
 DEC_XCH = 10 ** 11
 FEE_XCH = 10 ** 10

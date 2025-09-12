@@ -13,8 +13,10 @@ import yaml
 from urllib.parse import urlparse
 from typing import Dict, Callable, Optional
 from aiohttp import web
-from chia_rs import AugSchemeMPL, G2Element
 
+from chia.util.byte_types import hexstr_to_bytes
+from chia.util.hash import std_hash
+from chia.util.json_util import obj_to_response
 from chia.protocols.pool_protocol import (
     PoolErrorCode,
     GetFarmerResponse,
@@ -26,15 +28,15 @@ from chia.protocols.pool_protocol import (
     POOL_PROTOCOL_VERSION,
     AuthenticationPayload,
 )
-from chia.types.blockchain_format.sized_bytes import bytes32
-from chia.util.byte_types import hexstr_to_bytes
-from chia.util.hash import std_hash
-from chia.util.json_util import obj_to_response
-from chia.util.ints import uint8, uint64, uint32
+
+from chia_rs.sized_bytes import bytes32
+from chia_rs.sized_ints import uint8, uint64, uint32
+from chia_rs import AugSchemeMPL, G2Element
 
 from .record import FarmerRecord
 from .pool import Pool
 from .util import error_response, RequestMetadata
+
 
 plogger = logging.getLogger('partials')
 

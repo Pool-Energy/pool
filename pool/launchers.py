@@ -2,11 +2,12 @@ import asyncio
 import logging
 import time
 
-from chia.types.blockchain_format.sized_bytes import bytes32
+from chia_rs.sized_bytes import bytes32
 
 from .record import FarmerRecord
 from .singleton import LastSpendCoinNotFound, find_last_reward_from_launcher
 from .task import task_exception
+
 
 logger = logging.getLogger('launchers')
 

@@ -1,4 +1,5 @@
 import logging
+
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from decimal import Decimal as D
@@ -6,10 +7,12 @@ from typing import Dict, List, Mapping, Optional
 from urllib.parse import urlparse
 
 from chia.protocols.pool_protocol import PoolErrorCode, ErrorResponse
-from chia.util.ints import uint16
 from chia.util.json_util import obj_to_response
 from chia.wallet.util.tx_config import DEFAULT_TX_CONFIG
-from chia.rpc.wallet_request_types import CreateSignedTransactionsResponse
+from chia.wallet.wallet_request_types import CreateSignedTransactionsResponse
+
+from chia_rs.sized_ints import uint16
+
 
 logger = logging.getLogger('util')
 

@@ -9,13 +9,13 @@ import pathlib
 import shlex
 import subprocess
 import time
+
 from asyncio import Task
 from collections import defaultdict
 from decimal import Decimal as D
 from typing import Dict, Optional, Set, List, Tuple
 from packaging.version import Version
 
-from chia_rs import AugSchemeMPL, G1Element
 from chia.pools.pool_wallet_info import PoolState, PoolSingletonState
 from chia.protocols.pool_protocol import (
     PoolErrorCode,
@@ -26,7 +26,7 @@ from chia.protocols.pool_protocol import (
     PutFarmerRequest,
     POOL_PROTOCOL_VERSION,
 )
-from chia.rpc.wallet_rpc_client import (
+from chia.wallet.wallet_rpc_client import (
     WalletRpcClient,
     LogIn,
     PushTransactions,
@@ -35,29 +35,36 @@ from chia.rpc.wallet_rpc_client import (
 from chia.types.blockchain_format.coin import Coin
 from chia.types.blockchain_format.proof_of_space import verify_and_get_quality_string
 from chia.types.coin_record import CoinRecord
-from chia.types.coin_spend import CoinSpend
 from chia.util.bech32m import decode_puzzle_hash
-from chia.consensus.constants import ConsensusConstants, replace_str_to_bytes
+from chia.consensus.constants import replace_str_to_bytes
 from chia.consensus.default_constants import DEFAULT_CONSTANTS
-from chia.util.ints import uint8, uint16, uint32, uint64
+from chia.consensus.pot_iterations import calculate_iterations_quality
 from chia.util.byte_types import hexstr_to_bytes
 from chia.util.config import load_config
 from chia.util.default_root import DEFAULT_ROOT_PATH
 from chia.util.streamable import Streamable
-from chia.rpc.full_node_rpc_client import FullNodeRpcClient
+from chia.full_node.full_node_rpc_client import FullNodeRpcClient
 from chia.full_node.signage_point import SignagePoint
-from chia.types.end_of_slot_bundle import EndOfSubSlotBundle
-from chia.types.blockchain_format.sized_bytes import bytes32
-from chia.types.spend_bundle import estimate_fees
-from chia.consensus.pot_iterations import calculate_iterations_quality
 from chia.util.lru_cache import LRUCache
 from chia.wallet.transaction_record import TransactionRecord
+from chia.wallet.estimate_fees import estimate_fees
+from chia.wallet.util.tx_config import DEFAULT_TX_CONFIG
 from chia.pools.pool_puzzles import (
     get_most_recent_singleton_coin_from_coin_spend,
     get_delayed_puz_info_from_launcher_spend,
     launcher_id_to_p2_puzzle_hash,
 )
-from chia.wallet.util.tx_config import DEFAULT_TX_CONFIG
+
+from chia_rs.sized_bytes import bytes32
+from chia_rs.sized_ints import uint8, uint16, uint32, uint64
+from chia_rs import (
+    AugSchemeMPL,
+    G1Element,
+    CoinSpend,
+    ConsensusConstants,
+    EndOfSubSlotBundle,
+    PlotSize,
+)
 
 from .absorb_spend import NoCoinForFee
 from .difficulty_adjustment import get_new_difficulty
@@ -85,6 +92,7 @@ from .util import (
     payment_targets_to_additions,
 )
 from .xchprice import XCHPrice
+
 
 SECONDS_PER_BLOCK = (24 * 3600) / 4608
 logger = logging.getLogger('pool')
@@ -1943,13 +1951,20 @@ class Pool:
                 f"Invalid proof of space {partial.payload.sp_hash}"
             )
 
+        try:
+            sub_slot_iters = self.constants.SUB_SLOT_ITERS_STARTING
+        except AttributeError:
+            sub_slot_iters = self.blockchain_state.get('sub_slot_iters', 128*1024*1024)
+
         current_difficulty = farmer_record.difficulty
         required_iters: uint64 = calculate_iterations_quality(
             self.constants.DIFFICULTY_CONSTANT_FACTOR,
             quality_string,
-            partial.payload.proof_of_space.size,
+            PlotSize.make_v1(partial.payload.proof_of_space.size),
             current_difficulty,
             partial.payload.sp_hash,
+            sub_slot_iters,
+            uint32(peak_height + 1),
         )
 
         if required_iters >= self.iters_limit:

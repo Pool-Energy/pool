@@ -3,20 +3,16 @@ import yaml
 
 from typing import List
 
-from chia.rpc.full_node_rpc_client import FullNodeRpcClient
-from chia.types.blockchain_format.sized_bytes import bytes32
+from chia.full_node.full_node_rpc_client import FullNodeRpcClient
 from chia.util.bech32m import decode_puzzle_hash
 from chia.util.config import load_config
 from chia.util.default_root import DEFAULT_ROOT_PATH
-from chia.util.ints import uint16
+
+from chia_rs.sized_bytes import bytes32
+from chia_rs.sized_ints import uint16
 
 from pool.store.postgresql_store import PostgresqlPoolStore
 from pool.singleton import find_reward_from_coinrecord
-
-"""
-Tool to check the blockchain for all rewards sent to the pool wallet.
-It will print coins that were spent and not registered in the database.
-"""
 
 
 async def main():

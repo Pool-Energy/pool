@@ -4,13 +4,16 @@ import itertools
 import logging
 import time
 
-from chia.protocols.pool_protocol import PostPartialPayload
-from chia.types.blockchain_format.sized_bytes import bytes32
-from chia.util.ints import uint64
 from decimal import Decimal
 from typing import Optional
 
+from chia.protocols.pool_protocol import PostPartialPayload
+
+from chia_rs.sized_bytes import bytes32
+from chia_rs.sized_ints import uint64
+
 from .util import RequestMetadata
+
 
 logger = logging.getLogger('partials')
 

@@ -1,21 +1,14 @@
 import logging
 
 from typing import Any, Dict, List, Optional
-from chia_rs import AugSchemeMPL, G2Element, PrivateKey
 
 from chia.consensus.block_rewards import calculate_pool_reward
-from chia.consensus.constants import ConsensusConstants
 from chia.consensus.default_constants import DEFAULT_CONSTANTS
-from chia.rpc.wallet_request_types import CreateSignedTransactionsResponse
 from chia.types.blockchain_format.coin import Coin
 from chia.types.blockchain_format.program import Program
 from chia.types.blockchain_format.serialized_program import SerializedProgram
-from chia.types.blockchain_format.sized_bytes import bytes32
-from chia.types.coin_spend import CoinSpend, compute_additions
 from chia.types.condition_opcodes import ConditionOpcode
-from chia.types.spend_bundle import SpendBundle
 from chia.util.condition_tools import conditions_dict_for_solution
-from chia.util.ints import uint32, uint64
 from chia.util.hash import std_hash
 from chia.wallet.conditions import AssertCoinAnnouncement
 from chia.wallet.derive_keys import master_sk_to_wallet_sk
@@ -25,10 +18,24 @@ from chia.wallet.puzzles.p2_delegated_puzzle_or_hidden_puzzle import (
     puzzle_for_pk,
 )
 from chia.wallet.util.tx_config import DEFAULT_TX_CONFIG, CoinSelectionConfig, TXConfig
+from chia.wallet.util.compute_additions import compute_additions
 from chia.wallet.wallet import Wallet
 from chia.wallet.wallet_info import WalletInfo
+from chia.wallet.wallet_request_types import CreateSignedTransactionsResponse
+
+from chia_rs.sized_bytes import bytes32
+from chia_rs.sized_ints import uint32, uint64
+from chia_rs import (
+    AugSchemeMPL,
+    G2Element,
+    PrivateKey,
+    ConsensusConstants,
+    CoinSpend,
+    SpendBundle,
+)
 
 from .fee import get_cost
+
 
 logger = logging.getLogger('absorb_spend')
 

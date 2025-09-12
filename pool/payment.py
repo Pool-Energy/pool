@@ -4,10 +4,11 @@ import math
 from decimal import Decimal as D
 from typing import Dict, List, Tuple
 
-from chia.rpc.wallet_request_types import CreateSignedTransactionsResponse
-from chia.rpc.wallet_rpc_client import WalletRpcClient
-from chia.util.ints import uint64
+from chia.wallet.wallet_request_types import CreateSignedTransactionsResponse
+from chia.wallet.wallet_rpc_client import WalletRpcClient
 from chia.wallet.util.tx_config import DEFAULT_TX_CONFIG
+
+from chia_rs.sized_ints import uint64
 
 from .fee import get_cost
 from .util import (
@@ -15,6 +16,7 @@ from .util import (
     size_discount,
     stay_fee_discount,
 )
+
 
 logger = logging.getLogger('payment')
 

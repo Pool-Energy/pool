@@ -1,4 +1,5 @@
 import pytest
+
 from decimal import Decimal as D, getcontext
 
 from pool.util import stay_fee_discount

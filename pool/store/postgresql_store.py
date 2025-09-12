@@ -1,26 +1,27 @@
 import asyncio
-from collections import defaultdict
 import datetime
 import json
 import logging
-from typing import Optional, Set, List, Tuple, Dict
-from isHex import isHex
-
 import aiopg
-from chia_rs import G1Element
+
+from isHex import isHex
+from collections import defaultdict
+from typing import Optional, Set, List, Tuple, Dict
+
 from chia.pools.pool_wallet_info import PoolState
 from chia.protocols.pool_protocol import PostPartialPayload, PostPartialRequest
 from chia.types.blockchain_format.coin import Coin
 from chia.types.blockchain_format.proof_of_space import get_plot_id
-from chia.types.blockchain_format.sized_bytes import bytes32
 from chia.types.coin_record import CoinRecord
-from chia.types.coin_spend import CoinSpend
-from chia.util.ints import uint64
+
+from chia_rs import G1Element, CoinSpend
+from chia_rs.sized_ints import uint64
+from chia_rs.sized_bytes import bytes32
 
 from ..record import FarmerRecord
 from ..util import RequestMetadata, calculate_effort, days_pooling
 
-# FIXME: hardcoded to 12 hours cool down
+
 COOLDOWN_LEFT_JOIN_HOURS = 12
 logger = logging.getLogger('postgresql_store')
 
@@ -32,9 +33,7 @@ def left_join_cooldown(
     was_pool_member,
     cooldown_hours: int,
 ) -> List:
-
     sql = []
-
     now = datetime.datetime.now(tz=datetime.timezone.utc)
     # Had left the pool and is joining back
     if is_pool_member and not was_pool_member:

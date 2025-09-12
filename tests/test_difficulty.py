@@ -1,7 +1,7 @@
 import time
 import unittest
 
-from chia.util.ints import uint64
+from chia_rs.sized_ints import uint64
 
 from pool.difficulty_adjustment import get_new_difficulty
 

@@ -1,12 +1,13 @@
+import aiosqlite
+
 from pathlib import Path
 from typing import Optional, Set, List, Tuple, Dict
 
-import aiosqlite
-from chia_rs import G1Element
 from chia.pools.pool_wallet_info import PoolState
-from chia.types.blockchain_format.sized_bytes import bytes32
-from chia.types.coin_spend import CoinSpend
-from chia.util.ints import uint64
+
+from chia_rs import G1Element, CoinSpend
+from chia_rs.sized_bytes import bytes32
+from chia_rs.sized_ints import uint64
 
 from .abstract import AbstractPoolStore
 from ..record import FarmerRecord
@@ -14,9 +15,6 @@ from ..util import RequestMetadata
 
 
 class SqlitePoolStore(AbstractPoolStore):
-    """
-    Pool store based on SQLite.
-    """
 
     def __init__(self, db_path: Path = Path("pooldb.sqlite")):
         super().__init__()

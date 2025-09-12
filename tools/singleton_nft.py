@@ -2,19 +2,16 @@ import asyncio
 import sys
 import yaml
 
-from chia.rpc.full_node_rpc_client import FullNodeRpcClient
-from chia.types.blockchain_format.sized_bytes import bytes32
+from chia.full_node.full_node_rpc_client import FullNodeRpcClient
 from chia.util.config import load_config
 from chia.util.default_root import DEFAULT_ROOT_PATH
-from chia.util.ints import uint16
 from chia.consensus.default_constants import DEFAULT_CONSTANTS
+
+from chia_rs.sized_bytes import bytes32
+from chia_rs.sized_ints import uint16
 
 from pool.store.postgresql_store import PostgresqlPoolStore
 from pool.singleton import get_singleton_state
-
-"""
-Tool to check the singleton of a launcher
-"""
 
 
 async def main():
