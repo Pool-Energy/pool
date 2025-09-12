@@ -1,6 +1,6 @@
 from typing import Tuple, List
 
-from chia.util.ints import uint64
+from chia_rs.sized_ints import uint64
 
 
 def get_new_difficulty(

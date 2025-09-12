@@ -30,7 +30,7 @@ from chia.types.blockchain_format.sized_bytes import bytes32
 from chia.util.byte_types import hexstr_to_bytes
 from chia.util.hash import std_hash
 from chia.util.json_util import obj_to_response
-from chia.util.ints import uint8, uint64, uint32
+from chia_rs.sized_ints import uint8, uint64, uint32
 
 from .record import FarmerRecord
 from .pool import Pool

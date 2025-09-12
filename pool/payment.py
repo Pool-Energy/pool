@@ -6,7 +6,7 @@ from typing import Dict, List, Tuple
 
 from chia.rpc.wallet_request_types import CreateSignedTransactionsResponse
 from chia.rpc.wallet_rpc_client import WalletRpcClient
-from chia.util.ints import uint64
+from chia_rs.sized_ints import uint64
 from chia.wallet.util.tx_config import DEFAULT_TX_CONFIG
 
 from .fee import get_cost

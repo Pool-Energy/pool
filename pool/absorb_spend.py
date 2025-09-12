@@ -15,7 +15,7 @@ from chia.types.coin_spend import CoinSpend, compute_additions
 from chia.types.condition_opcodes import ConditionOpcode
 from chia.types.spend_bundle import SpendBundle
 from chia.util.condition_tools import conditions_dict_for_solution
-from chia.util.ints import uint32, uint64
+from chia_rs.sized_ints import uint32, uint64
 from chia.util.hash import std_hash
 from chia.wallet.conditions import AssertCoinAnnouncement
 from chia.wallet.derive_keys import master_sk_to_wallet_sk

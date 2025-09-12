@@ -7,7 +7,7 @@ from typing import Dict, Optional
 from chia.protocols.pool_protocol import PostPartialPayload
 from chia.types.blockchain_format.sized_bytes import bytes32
 from chia.types.coin_record import CoinRecord
-from chia.util.ints import uint64
+from chia_rs.sized_ints import uint64
 
 from influxdb_client import Point
 from influxdb_client.client.influxdb_client_async import InfluxDBClientAsync

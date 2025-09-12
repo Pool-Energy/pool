@@ -23,7 +23,7 @@ from chia.types.blockchain_format.sized_bytes import bytes32
 from chia.types.coin_record import CoinRecord
 from chia.types.coin_spend import CoinSpend
 from chia.types.spend_bundle import SpendBundle
-from chia.util.ints import uint32, uint64
+from chia_rs.sized_ints import uint32, uint64
 
 from .absorb_spend import spend_with_fee
 from .record import FarmerRecord

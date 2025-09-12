@@ -39,7 +39,7 @@ from chia.types.coin_spend import CoinSpend
 from chia.util.bech32m import decode_puzzle_hash
 from chia.consensus.constants import ConsensusConstants, replace_str_to_bytes
 from chia.consensus.default_constants import DEFAULT_CONSTANTS
-from chia.util.ints import uint8, uint16, uint32, uint64
+from chia_rs.sized_ints import uint8, uint16, uint32, uint64
 from chia.util.byte_types import hexstr_to_bytes
 from chia.util.config import load_config
 from chia.util.default_root import DEFAULT_ROOT_PATH

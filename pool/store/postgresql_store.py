@@ -15,7 +15,7 @@ from chia.types.blockchain_format.proof_of_space import get_plot_id
 from chia.types.blockchain_format.sized_bytes import bytes32
 from chia.types.coin_record import CoinRecord
 from chia.types.coin_spend import CoinSpend
-from chia.util.ints import uint64
+from chia_rs.sized_ints import uint64
 
 from ..record import FarmerRecord
 from ..util import RequestMetadata, calculate_effort, days_pooling
