@@ -4,11 +4,11 @@ from typing import Any, Dict, List, Optional
 
 from chia.consensus.block_rewards import calculate_pool_reward
 from chia.consensus.default_constants import DEFAULT_CONSTANTS
+from chia.consensus.condition_tools import conditions_dict_for_solution
 from chia.types.blockchain_format.coin import Coin
 from chia.types.blockchain_format.program import Program
 from chia.types.blockchain_format.serialized_program import SerializedProgram
 from chia.types.condition_opcodes import ConditionOpcode
-from chia.util.condition_tools import conditions_dict_for_solution
 from chia.util.hash import std_hash
 from chia.wallet.conditions import AssertCoinAnnouncement
 from chia.wallet.derive_keys import master_sk_to_wallet_sk

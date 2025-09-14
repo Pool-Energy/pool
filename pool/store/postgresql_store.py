@@ -428,11 +428,14 @@ class PostgresqlPoolStore(object):
         time_taken: Optional[float] = -999.999,
         error: Optional[str] = None,
     ) -> None:
-        logger.debug(
-            f"Adding partial for {partial_payload.launcher_id.hex()} "
-            f"(k{partial_payload.proof_of_space.size}) with "
-            f"difficulty {difficulty} in {time_taken} seconds."
-        )
+        plot_size_obj = partial_payload.proof_of_space.size()
+        if hasattr(plot_size_obj, 'size_v1') and plot_size_obj.size_v1 is not None:
+            plot_size_k = int(plot_size_obj.size_v1)
+        elif hasattr(plot_size_obj, 'size_v2') and plot_size_obj.size_v2 is not None:
+            plot_size_k = int(plot_size_obj.size_v2)
+        else:
+            plot_size_k = 32
+            logger.warning(f"Fallback size k=32 for {partial_payload.launcher_id.hex()}")
 
         async with self.pool.acquire() as conn:
             async with conn.cursor() as cursor:
@@ -450,15 +453,18 @@ class PostgresqlPoolStore(object):
                         req_metadata.get_remote() if req_metadata else None,
                         req_metadata.get_host() if req_metadata else None,
                         time_taken,
-                        partial_payload.proof_of_space.size,
+                        plot_size_k,
                     ),
                 )
 
             if error is None:
                 async with conn.cursor() as cursor:
                     await cursor.execute(
-                        "UPDATE farmer SET points = points + %s WHERE launcher_id=%s",
-                        (difficulty, partial_payload.launcher_id.hex()),
+                        "UPDATE farmer SET points = points + %s WHERE launcher_id = %s",
+                        (
+                            difficulty,
+                            partial_payload.launcher_id.hex()
+                        ),
                     )
 
     async def get_recent_partials(self, start_time, launcher_id: Optional[str] = None) -> List[Tuple[str, int, int]]:

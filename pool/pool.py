@@ -39,12 +39,12 @@ from chia.util.bech32m import decode_puzzle_hash
 from chia.consensus.constants import replace_str_to_bytes
 from chia.consensus.default_constants import DEFAULT_CONSTANTS
 from chia.consensus.pot_iterations import calculate_iterations_quality
+from chia.consensus.signage_point import SignagePoint
 from chia.util.byte_types import hexstr_to_bytes
 from chia.util.config import load_config
 from chia.util.default_root import DEFAULT_ROOT_PATH
 from chia.util.streamable import Streamable
 from chia.full_node.full_node_rpc_client import FullNodeRpcClient
-from chia.full_node.signage_point import SignagePoint
 from chia.util.lru_cache import LRUCache
 from chia.wallet.transaction_record import TransactionRecord
 from chia.wallet.estimate_fees import estimate_fees
@@ -63,7 +63,6 @@ from chia_rs import (
     CoinSpend,
     ConsensusConstants,
     EndOfSubSlotBundle,
-    PlotSize,
 )
 
 from .absorb_spend import NoCoinForFee
@@ -1236,7 +1235,9 @@ class Pool:
                                         payment_targets,
                                     )
                                     fee_absolute = (await get_cost(
-                                        transaction.spend_bundle, self.blockchain_state['peak'].height, self.constants
+                                        transaction.spend_bundle,
+                                        self.blockchain_state['peak'].height,
+                                        self.constants
                                     )) * self.mojos_per_cost
                                 else:
                                     fee_absolute = self.payment_fee_absolute
@@ -1958,13 +1959,13 @@ class Pool:
 
         current_difficulty = farmer_record.difficulty
         required_iters: uint64 = calculate_iterations_quality(
-            self.constants.DIFFICULTY_CONSTANT_FACTOR,
+            self.constants,
             quality_string,
-            PlotSize.make_v1(partial.payload.proof_of_space.size),
+            partial.payload.proof_of_space.size(),
             current_difficulty,
             partial.payload.sp_hash,
             sub_slot_iters,
-            uint32(peak_height + 1),
+            peak_height,
         )
 
         if required_iters >= self.iters_limit:
