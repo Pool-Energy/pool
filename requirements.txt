@@ -1,6 +1,6 @@
-git+https://github.com/pool-energy/chia-blockchain.git@release/2.5.5#egg=chia-blockchain
-chia_rs==0.27.0
-setuptools>=75.1.0
+git+https://github.com/pool-energy/chia-blockchain.git@release/2.5.7#egg=chia-blockchain
+chia_rs==0.30.0
+setuptools>=75.5.0
 uvloop~=0.21.0
 aiopg==1.4.0
 aiohttp~=3.12.14
