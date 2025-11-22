@@ -32,6 +32,9 @@ from chia.wallet.wallet_rpc_client import (
     PushTransactions,
     ConditionValidTimes,
 )
+from chia.wallet.wallet_request_types import (
+    GetWalletBalance,
+)
 from chia.types.blockchain_format.coin import Coin
 from chia.types.blockchain_format.proof_of_space import verify_and_get_quality_string
 from chia.types.coin_record import CoinRecord
@@ -386,7 +389,7 @@ class Pool:
                 if not res:
                     raise ValueError("Error wallet logging. Make sure your config fingerprint %r is correct.", wallet['fingerprint'])
                 self.log.info(f"Connected to wallet {wallet['name']} (fingerprint: {wallet['fingerprint']})")
-                res = await wallet['rpc_client'].get_wallet_balance(wallet['id'])
+                res = await wallet['rpc_client'].get_wallet_balance(GetWalletBalance(wallet['id']))
                 self.log.info(f"Obtaining wallet details: {res}")
         except aiohttp.client_exceptions.ClientConnectorError as e:
             self.log.error('Failed to connect to the wallet %s: %s', wallet['fingerprint'], e)
@@ -620,9 +623,7 @@ class Pool:
                         wallet['synced'] = (await wallet['rpc_client'].get_sync_status()).synced
                         wallet['syncing'] = (await wallet['rpc_client'].get_sync_status()).syncing
                         wallet['height'] = (await wallet['rpc_client'].get_height_info()).height
-                        wallet['balance'] = await wallet['rpc_client'].get_wallet_balance(
-                            str(wallet['id'])
-                        )
+                        wallet['balance'] = (await wallet['rpc_client'].get_wallet_balance(GetWalletBalance(wallet['id']))).wallet_balance.confirmed_wallet_balance
                     except aiohttp.client_exceptions.ClientConnectorError as e:
                         self.log.error(
                             'Failed to connect to wallet %r (fingerprint: %s): %s',

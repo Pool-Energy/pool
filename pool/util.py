@@ -9,7 +9,10 @@ from urllib.parse import urlparse
 from chia.protocols.pool_protocol import PoolErrorCode, ErrorResponse
 from chia.util.json_util import obj_to_response
 from chia.wallet.util.tx_config import DEFAULT_TX_CONFIG
-from chia.wallet.wallet_request_types import CreateSignedTransactionsResponse
+from chia.wallet.wallet_request_types import (
+    CreateSignedTransactionsResponse,
+    GetWalletBalance,
+)
 
 from chia_rs.sized_ints import uint16
 
@@ -198,7 +201,7 @@ async def create_transaction(
             # We are short of coins to make the payment
             logger.info('Getting extra non puzzle hash coins')
 
-            balance = await wallet['rpc_client'].get_wallet_balance(wallet['id'])
+            balance = (await wallet['rpc_client'].get_wallet_balance(GetWalletBalance(wallet['id']))).wallet_balance.confirmed_wallet_balance
             logger.debug(f'Get balance for wallet {wallet["id"]}: {balance}')
 
             amount_missing = total_additions - total_coins
