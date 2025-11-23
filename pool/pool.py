@@ -581,6 +581,7 @@ class Pool:
             'available': node.get('available', True),
             'priority': node.get('priority', 50),
             'primary': is_primary,
+            'version': node.get('version', 'unknown'),
         }
 
     @task_exception
@@ -1381,14 +1382,16 @@ class Pool:
             response = self.recent_eos.get(partial.payload.sp_hash)
             if not response:
                 response = await self.node_rpc_client.get_recent_signage_point_or_eos(
-                    None, partial.payload.sp_hash,
+                    None,
+                    partial.payload.sp_hash,
                 )
                 self.recent_eos.put(partial.payload.sp_hash, response)
         else:
             response = self.recent_signage_point.get(partial.payload.sp_hash)
             if not response:
                 response = await self.node_rpc_client.get_recent_signage_point_or_eos(
-                    partial.payload.sp_hash, None
+                    partial.payload.sp_hash,
+                    None
                 )
                 self.recent_signage_point.put(partial.payload.sp_hash, response)
         return response
@@ -1889,10 +1892,11 @@ class Pool:
         response = await self.get_signage_point_or_eos(partial)
         if response is None:
             # Try again after 10 seconds in case we just didn't yet receive the signage point
+            self.log.info(f"Signage point or EOS {partial.payload.sp_hash} not found, retrying in 10 seconds")
             await asyncio.sleep(10)
             response = await self.get_signage_point_or_eos(partial)
 
-        if response is None or response["reverted"]:
+        if response is None or response.get("reverted", False):
             await self.partials.add_partial(
                 partial.payload,
                 req_metadata,
@@ -1902,7 +1906,9 @@ class Pool:
                 'INVALID_SIGNAGE_OR_EOS',
             )
             return error_dict(
-                PoolErrorCode.NOT_FOUND, f"Did not find signage point or EOS {partial.payload.sp_hash}, {response}"
+                PoolErrorCode.NOT_FOUND,
+                f"Did not find signage point or EOS {partial.payload.sp_hash.hex()} after multiple attempts. "
+                f"This could be due to network issues or the node not being fully synced. Response: {response}"
             )
 
         partial_time_taken: float = time.time() - response["time_received"]

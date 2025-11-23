@@ -10,7 +10,7 @@ def read(fname):
 
 setup(
     name="pool",
-    version="1.8.9",
+    version="1.9.0",
     author="🌱 DJΞRFY 🚀",
     author_email="djerfy@gmail.com",
     description=("Pool.Energy of Chia blockchain."),
