@@ -1893,25 +1893,35 @@ class Pool:
                 )
 
         response = await self.get_signage_point_or_eos(partial)
+
         if response is None:
-            # Try again after 10 seconds in case we just didn't yet receive the signage point
-            self.log.info(f"Signage point or EOS {partial.payload.sp_hash} not found, retrying in 10 seconds")
+            # first, try again after 10 seconds in case of network issues
+            self.log.info(f"Signage point or EOS {partial.payload.sp_hash.hex()[:16]} not found, retrying in 10 seconds")
             await asyncio.sleep(10)
             response = await self.get_signage_point_or_eos(partial)
 
-        if response is None or response.get("reverted", False):
+        if response is None:
+            # second, try again after switching to another node in case the current one is having issues
+            self.log.info(f"Signage point or EOS {partial.payload.sp_hash.hex()[:16]} not found, trying node failover")
+            self.set_healthy_node(switch=True, threshold_peak=0)
+            await asyncio.sleep(2)
+            response = await self.get_signage_point_or_eos(partial)
+
+        if response is None or response.get('reverted', False):
+            error_type = 'SP_EOS_NOT_FOUND' if response is None else 'SP_EOS_REVERTED'
             await self.partials.add_partial(
                 partial.payload,
                 req_metadata,
                 time_received_partial,
                 farmer_record.difficulty,
                 partial_time_taken,
-                'INVALID_SIGNAGE_OR_EOS',
+                error_type,
             )
+
             return error_dict(
                 PoolErrorCode.NOT_FOUND,
-                f"Did not find signage point or EOS {partial.payload.sp_hash.hex()} after multiple attempts. "
-                f"This could be due to network issues or the node not being fully synced. Response: {response}"
+                f"Invalid signage point or EOS {partial.payload.sp_hash.hex()[:16]} after multiple attempts: {error_type}. ",
+                f"This could be due to network issues or the node not being fully synced. Response: {response}",
             )
 
         partial_time_taken: float = time.time() - response["time_received"]
