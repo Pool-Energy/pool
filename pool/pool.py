@@ -277,6 +277,7 @@ class Pool:
                 'priority': node.get('priority', 50),
                 'enabled': node.get('enabled', True),
                 'available': True,
+                'version': None,
                 'rpc_client': None,
                 'blockchain_state': {'peak': None},
                 'blockchain_mempool_full_pct': 0,
@@ -362,6 +363,7 @@ class Pool:
                     continue
                 try:
                     node['blockchain_state'] = await node['rpc_client'].get_blockchain_state()
+                    node['version'] = await node['rpc_client'].get_version()
                 except aiohttp.client_exceptions.ClientConnectorError as e:
                     self.log.error(
                         'Failing to connect to node %r (%s:%s), retrying in 2 seconds: %s',
@@ -555,9 +557,10 @@ class Pool:
 
         if self.node_rpc_client != current_node['rpc_client']:
             logger.warning(
-                "Switching to node %r with better peak difference"
+                "Switching to node %s (v%s) with better peak difference"
                 " (priority: %s, peak: %s, difference: %s, threshold: %s)",
                 current_node['name'],
+                current_node['version'].get('version', '0.0.0-dev'),
                 current_node['priority'],
                 node_peak,
                 peak_difference,
@@ -581,7 +584,7 @@ class Pool:
             'available': node.get('available', True),
             'priority': node.get('priority', 50),
             'primary': is_primary,
-            'version': node.get('version', 'unknown'),
+            'version': node['version'].get('version', '0.0.0-dev'),
         }
 
     @task_exception
