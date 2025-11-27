@@ -389,12 +389,26 @@ class Pool:
                 login_request = LogIn(fingerprint=wallet['fingerprint'])
                 res = await wallet['rpc_client'].log_in(login_request)
                 if not res:
-                    raise ValueError("Error wallet logging. Make sure your config fingerprint %r is correct.", wallet['fingerprint'])
-                self.log.info(f"Connected to wallet {wallet['name']} (fingerprint: {wallet['fingerprint']})")
-                res = await wallet['rpc_client'].get_wallet_balance(GetWalletBalance(wallet['id']))
-                self.log.info(f"Obtaining wallet details: {res}")
+                    raise ValueError(
+                        "Error wallet logging. Make sure your config fingerprint %r is correct.",
+                        wallet['fingerprint']
+                    )
+                self.log.info(
+                    "Connected to wallet %s (fingerprint: %s) successfully",
+                    wallet['name'],
+                    wallet['fingerprint']
+                )
+                res = (await wallet['rpc_client'].get_wallet_balance(GetWalletBalance(wallet['id']))).wallet_balance
+                self.log.info(
+                    "Get wallet details: %s",
+                    json.dumps(res.to_json_dict())
+                )
         except aiohttp.client_exceptions.ClientConnectorError as e:
-            self.log.error('Failed to connect to the wallet %s: %s', wallet['fingerprint'], e)
+            self.log.error(
+                "Failed to connect to wallet %s: %s",
+                wallet['fingerprint'],
+                e
+            )
 
         self.scan_p2_singleton_puzzle_hashes = await self.store.get_pay_to_singleton_phs()
 
@@ -627,10 +641,10 @@ class Pool:
                         wallet['synced'] = (await wallet['rpc_client'].get_sync_status()).synced
                         wallet['syncing'] = (await wallet['rpc_client'].get_sync_status()).syncing
                         wallet['height'] = (await wallet['rpc_client'].get_height_info()).height
-                        wallet['balance'] = (await wallet['rpc_client'].get_wallet_balance(GetWalletBalance(wallet['id']))).wallet_balance.confirmed_wallet_balance
+                        wallet['balance'] = (await wallet['rpc_client'].get_wallet_balance(GetWalletBalance(wallet['id']))).wallet_balance
                     except aiohttp.client_exceptions.ClientConnectorError as e:
                         self.log.error(
-                            'Failed to connect to wallet %r (fingerprint: %s): %s',
+                            "Failed to connect to wallet %r (fingerprint: %s): %s",
                             wallet['name'],
                             wallet['fingerprint'],
                             e
@@ -644,7 +658,19 @@ class Pool:
                         {
                             'name': i['name'],
                             'address': i['address'],
-                            'balance': i['balance'],
+                            'amount': i['balance'].confirmed_wallet_balance,
+                            'balance': {
+                                'wallet_id': i['balance'].wallet_id,
+                                'fingerprint': i['balance'].fingerprint,
+                                'confirmed_wallet_balance': i['balance'].confirmed_wallet_balance,
+                                'unconfirmed_wallet_balance': i['balance'].unconfirmed_wallet_balance,
+                                'spendable_balance': i['balance'].spendable_balance,
+                                'pending_change': i['balance'].pending_change,
+                                'max_send_amount': i['balance'].max_send_amount,
+                                'unspent_coin_count': i['balance'].unspent_coin_count,
+                                'pending_coin_removal_count': i['balance'].pending_coin_removal_count,
+                                'pending_approval_balance': i['balance'].pending_approval_balance,
+                            },
                             'synced': i['synced'],
                             'syncing': i['syncing'],
                             'height': i['height'],
