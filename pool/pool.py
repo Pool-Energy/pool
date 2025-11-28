@@ -1201,12 +1201,11 @@ class Pool:
                 for tx_id, payment_targets in payment_targets_per_tx.items():
                     if tx_id:
                         try:
-                            
-                            transaction = await wallet['rpc_client'].get_transaction(GetTransaction(tx_id))
-                            transation_phs = set()
+                            transaction = (await wallet['rpc_client'].get_transaction(GetTransaction(tx_id))).transaction
+                            transaction_phs = set()
                             unaccounted_amount = None
                             for addition_coin in transaction.additions:
-                                transation_phs.add(addition_coin.puzzle_hash)
+                                transaction_phs.add(addition_coin.puzzle_hash)
                                 target: List = payment_targets.get(addition_coin.puzzle_hash)
                                 if target:
                                     amounts = sum(map(lambda x: x['amount'], target))
@@ -1220,7 +1219,7 @@ class Pool:
                                         unaccounted_amount = int(addition_coin.amount)
                                     else:
                                         raise RuntimeError('More than one change coin %r', addition_coin)
-                            for ph in (set(payment_targets.keys()) - transation_phs):
+                            for ph in (set(payment_targets.keys()) - transaction_phs):
                                 payment_targets.pop(ph)
                         except ValueError as e:
                             if 'not found' in str(e):
