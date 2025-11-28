@@ -34,6 +34,7 @@ from chia.wallet.wallet_rpc_client import (
 )
 from chia.wallet.wallet_request_types import (
     GetWalletBalance,
+    GetTransaction,
 )
 from chia.types.blockchain_format.coin import Coin
 from chia.types.blockchain_format.proof_of_space import verify_and_get_quality_string
@@ -1200,7 +1201,8 @@ class Pool:
                 for tx_id, payment_targets in payment_targets_per_tx.items():
                     if tx_id:
                         try:
-                            transaction = await wallet['rpc_client'].get_transaction(tx_id)
+                            
+                            transaction = await wallet['rpc_client'].get_transaction(GetTransaction(tx_id))
                             transation_phs = set()
                             unaccounted_amount = None
                             for addition_coin in transaction.additions:
