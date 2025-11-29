@@ -1951,7 +1951,7 @@ class Pool:
 
             return error_dict(
                 PoolErrorCode.NOT_FOUND,
-                f"Invalid signage point or EOS {partial.payload.sp_hash.hex()[:16]} after multiple attempts: {error_type}. ",
+                f"Invalid signage point or EOS {partial.payload.sp_hash.hex()[:16]} after multiple attempts: {error_type}. "
                 f"This could be due to network issues or the node not being fully synced. Response: {response}",
             )
 
