@@ -44,6 +44,7 @@ from chia.consensus.constants import replace_str_to_bytes
 from chia.consensus.default_constants import DEFAULT_CONSTANTS
 from chia.consensus.pot_iterations import calculate_iterations_quality
 from chia.consensus.signage_point import SignagePoint
+from chia.rpc.rpc_client import ResponseFailureError
 from chia.util.byte_types import hexstr_to_bytes
 from chia.util.config import load_config
 from chia.util.default_root import DEFAULT_ROOT_PATH
@@ -1407,24 +1408,30 @@ class Pool:
             except Exception as e:
                 self.log.error(f"Unexpected error: {e}", exc_info=True)
 
-    async def get_signage_point_or_eos(self, partial):
-        if partial.payload.end_of_sub_slot:
-            response = self.recent_eos.get(partial.payload.sp_hash)
-            if not response:
-                response = await self.node_rpc_client.get_recent_signage_point_or_eos(
-                    None,
-                    partial.payload.sp_hash,
-                )
-                self.recent_eos.put(partial.payload.sp_hash, response)
-        else:
-            response = self.recent_signage_point.get(partial.payload.sp_hash)
-            if not response:
-                response = await self.node_rpc_client.get_recent_signage_point_or_eos(
-                    partial.payload.sp_hash,
-                    None
-                )
-                self.recent_signage_point.put(partial.payload.sp_hash, response)
-        return response
+    async def get_signage_point_or_eos(
+        self,
+        partial
+    ) -> Optional[Dict]:
+        cache_key = partial.payload.sp_hash
+        is_eos = partial.payload.end_of_sub_slot
+        cache = self.recent_eos if is_eos else self.recent_signage_point
+        if response := cache.get(cache_key):
+            return response
+        try:
+            args = (None, cache_key) if is_eos else (cache_key, None)
+            response = await self.node_rpc_client.get_recent_signage_point_or_eos(*args)
+            cache.put(cache_key, response)
+            return response
+        except ResponseFailureError as e:
+            message = e.response.get('error', 'Unknown error')
+            if 'did not find sp' in message.lower():
+                self.log.warning("%s %s not found in cache", 'EOS' if is_eos else 'Signage point', cache_key.hex()[:16])
+            else:
+                self.log.error("Unknown error: %s", message)
+            return None
+        except Exception as e:
+            self.log.error("Unexpected error: %s", e)
+            return None
 
     async def check_and_confirm_partial(
         self,
