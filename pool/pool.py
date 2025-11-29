@@ -1416,10 +1416,12 @@ class Pool:
         is_eos = partial.payload.end_of_sub_slot
         cache = self.recent_eos if is_eos else self.recent_signage_point
         if response := cache.get(cache_key):
+            self.log.debug("Cache true: %s", response)
             return response
         try:
             args = (None, cache_key) if is_eos else (cache_key, None)
             response = await self.node_rpc_client.get_recent_signage_point_or_eos(*args)
+            self.log.debug("Cache false: %s", response)
             cache.put(cache_key, response)
             return response
         except ResponseFailureError as e:
