@@ -1317,7 +1317,7 @@ class Pool:
                             peak_height - transaction.confirmed_at_height
                         ) > self.confirmation_security_threshold
                     ):
-                        transaction = await wallet['rpc_client'].get_transaction(transaction.name)
+                        transaction = (await wallet['rpc_client'].get_transaction(GetTransaction(transaction.name))).transaction
                         peak_height = (await wallet['rpc_client'].get_height_info()).height
                         self.log.info(f"Waiting for transaction to obtain {self.confirmation_security_threshold} confirmations")
                         if not transaction.confirmed:
