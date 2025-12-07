@@ -10,6 +10,7 @@ import shlex
 import subprocess
 import time
 
+from art import lprint, tprint
 from asyncio import Task
 from collections import defaultdict
 from decimal import Decimal as D
@@ -293,6 +294,11 @@ class Pool:
         await self.store.connect()
         await self.store_ts.connect()
         await self.partials.load_from_store()
+
+        lprint(length=69, height=1, char="*")
+        tprint(" Pool.Energy", chr_ignore=True)
+        lprint(length=69, height=1, char="*")
+
 
         working_node = False
         for node in list(self.nodes):
