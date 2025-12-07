@@ -407,7 +407,7 @@ class Pool:
                     wallet['fingerprint']
                 )
                 res = (await wallet['rpc_client'].get_wallet_balance(GetWalletBalance(wallet['id']))).wallet_balance
-                self.log.info(
+                self.log.debug(
                     "Get wallet details: %s",
                     json.dumps(res.to_json_dict())
                 )
