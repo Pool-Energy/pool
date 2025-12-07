@@ -299,6 +299,7 @@ class Pool:
         tprint(" Pool.Energy", chr_ignore=True)
         lprint(length=69, height=1, char="*")
 
+        self.log.info(f"Starting pool with {self.pool_config['fee']['pool'] * 100}% fee (address: {self.pool_config['fee']['address']})")
 
         working_node = False
         for node in list(self.nodes):
