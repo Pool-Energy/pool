@@ -125,7 +125,9 @@ async def create_share(
         pool_fee_pct = D(pool_fee) * (1 - fee_discount)
 
         # Just be extra sure pool is getting enough fee
-        assert pool_fee_pct > pool_fee / 2
+        # Handle case where pool_fee = 0 (no pool fee)
+        if pool_fee > 0:
+            assert pool_fee_pct > pool_fee / 2, "Pool fee after discounts is less of configured pool fee"
 
         addition = mojos * (1 - pool_fee_pct)
         pool_fee_mojos = mojos - addition
