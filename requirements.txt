@@ -8,7 +8,7 @@ pytest==8.4.2
 cachetools==6.2.1
 influxdb-client==1.49.0
 python-json-logger==3.3.0
-py-spy==0.4.0
+py-spy==0.4.1
 pytest-asyncio==1.1.0
 isHex==1.1.0
 art==6.5
