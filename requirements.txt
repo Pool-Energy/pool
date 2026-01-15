@@ -3,7 +3,7 @@ chia_rs==0.30.0
 setuptools>=75.5.0
 uvloop~=0.21.0
 aiopg==1.4.0
-aiohttp~=3.12.14
+aiohttp~=3.13.2
 pytest==8.4.2
 cachetools==6.2.1
 influxdb-client==1.49.0
