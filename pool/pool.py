@@ -1988,13 +1988,22 @@ class Pool:
         else:
             challenge_hash = end_of_sub_slot.challenge_chain.get_hash()
 
+        # Calculate prev_transaction_block_height for the next block
+        # If current peak is a transaction block, use its height; otherwise use its prev_transaction_block_height
+        peak = self.blockchain_state['peak']
+        if peak.is_transaction_block:
+            prev_tx_block_height = uint32(peak.height)
+        else:
+            prev_tx_block_height = uint32(peak.prev_transaction_block_height)
+
         # Note the use of peak_height + 1. We Are evaluating the suitability for the next block
         quality_string: Optional[bytes32] = verify_and_get_quality_string(
             partial.payload.proof_of_space,
             self.constants,
             challenge_hash,
             partial.payload.sp_hash,
-            height=uint32(peak_height + 1)
+            height=uint32(peak_height + 1),
+            prev_transaction_block_height=prev_tx_block_height
         )
         if quality_string is None:
             await self.partials.add_partial(
