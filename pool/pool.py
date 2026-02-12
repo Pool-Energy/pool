@@ -1,6 +1,7 @@
 import aiohttp
 import asyncio
 import dataclasses
+import inspect
 import json
 import itertools
 import logging
@@ -1997,14 +1998,27 @@ class Pool:
             prev_tx_block_height = uint32(peak.prev_transaction_block_height)
 
         # Note the use of peak_height + 1. We Are evaluating the suitability for the next block
-        quality_string: Optional[bytes32] = verify_and_get_quality_string(
-            partial.payload.proof_of_space,
-            self.constants,
-            challenge_hash,
-            partial.payload.sp_hash,
-            height=uint32(peak_height + 1),
-            prev_transaction_block_height=prev_tx_block_height
-        )
+        # Backward compatibility: check if verify_and_get_quality_string accepts prev_transaction_block_height
+        verify_sig = inspect.signature(verify_and_get_quality_string)
+        if 'prev_transaction_block_height' in verify_sig.parameters:
+            # Chia v2.6.0+
+            quality_string: Optional[bytes32] = verify_and_get_quality_string(
+                partial.payload.proof_of_space,
+                self.constants,
+                challenge_hash,
+                partial.payload.sp_hash,
+                height=uint32(peak_height + 1),
+                prev_transaction_block_height=prev_tx_block_height
+            )
+        else:
+            # Chia < v2.6.0
+            quality_string: Optional[bytes32] = verify_and_get_quality_string(
+                partial.payload.proof_of_space,
+                self.constants,
+                challenge_hash,
+                partial.payload.sp_hash,
+                height=uint32(peak_height + 1)
+            )
         if quality_string is None:
             await self.partials.add_partial(
                 partial.payload,
@@ -2019,21 +2033,43 @@ class Pool:
                 f"Invalid proof of space {partial.payload.sp_hash}"
             )
 
-        try:
-            sub_slot_iters = self.constants.SUB_SLOT_ITERS_STARTING
-        except AttributeError:
-            sub_slot_iters = self.blockchain_state.get('sub_slot_iters', 128*1024*1024)
-
         current_difficulty = farmer_record.difficulty
-        required_iters: uint64 = calculate_iterations_quality(
-            self.constants,
-            quality_string,
-            partial.payload.proof_of_space.size(),
-            current_difficulty,
-            partial.payload.sp_hash,
-            sub_slot_iters,
-            peak_height,
-        )
+        
+        # Get plot size parameter - backward compatibility for v2.6.0
+        if hasattr(partial.payload.proof_of_space, 'param'):
+            # Chia v2.6.0+
+            plot_param = partial.payload.proof_of_space.param()
+        else:
+            # Chia < v2.6.0 - use .size() method
+            plot_param = partial.payload.proof_of_space.size()
+        
+        # Calculate required iterations - backward compatibility
+        calc_sig = inspect.signature(calculate_iterations_quality)
+        if len(calc_sig.parameters) == 5:
+            # Chia v2.6.0+ (5 parameters)
+            required_iters: uint64 = calculate_iterations_quality(
+                self.constants,
+                quality_string,
+                plot_param,
+                current_difficulty,
+                partial.payload.sp_hash,
+            )
+        else:
+            # Chia < v2.6.0 (7 parameters)
+            try:
+                sub_slot_iters = self.constants.SUB_SLOT_ITERS_STARTING
+            except AttributeError:
+                sub_slot_iters = self.blockchain_state.get('sub_slot_iters', 128*1024*1024)
+            
+            required_iters: uint64 = calculate_iterations_quality(
+                self.constants,
+                quality_string,
+                plot_param,
+                current_difficulty,
+                partial.payload.sp_hash,
+                sub_slot_iters,
+                peak_height,
+            )
 
         if required_iters >= self.iters_limit:
             await self.partials.add_partial(
