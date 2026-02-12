@@ -4,7 +4,6 @@ import time
 
 from collections import defaultdict
 from datetime import datetime
-from typing import Optional
 
 from .task import common_loop, task_exception
 
@@ -19,7 +18,7 @@ class Notifications(object):
         self.store = pool.store
         self.store_ts = pool.store_ts
 
-        self.loop_launcher_size_task: Optional[asyncio.Task] = None
+        self.loop_launcher_size_task: asyncio.Task | None = None
 
     async def start(self):
         self.loop_launcher_size_task = asyncio.create_task(common_loop(

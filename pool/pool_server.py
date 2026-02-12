@@ -11,8 +11,9 @@ import aiohttp
 import yaml
 
 from urllib.parse import urlparse
-from typing import Dict, Callable, Optional
+from typing import Dict
 from aiohttp import web
+from collections.abc import Callable
 
 from chia.util.byte_types import hexstr_to_bytes
 from chia.util.hash import std_hash
@@ -46,7 +47,7 @@ def allow_cors(response: web.Response) -> web.Response:
     return response
 
 
-def check_authentication_token(launcher_id: bytes32, token: uint64, timeout: uint8) -> Optional[web.Response]:
+def check_authentication_token(launcher_id: bytes32, token: uint64, timeout: uint8) -> web.Response | None:
     if not validate_authentication_token(token, timeout):
         return error_response(
             PoolErrorCode.INVALID_AUTHENTICATION_TOKEN,
@@ -124,13 +125,13 @@ class PoolServer:
         launcher_id: bytes32 = hexstr_to_bytes(request_obj.rel_url.query["launcher_id"])
         authentication_token = uint64(request_obj.rel_url.query["authentication_token"])
 
-        authentication_token_error: Optional[web.Response] = check_authentication_token(
+        authentication_token_error: web.Response | None = check_authentication_token(
             launcher_id, authentication_token, self.pool.authentication_token_timeout
         )
         if authentication_token_error is not None:
             return authentication_token_error
 
-        farmer_record: Optional[FarmerRecord] = await self.pool.store.get_farmer_record(launcher_id)
+        farmer_record: FarmerRecord | None = await self.pool.store.get_farmer_record(launcher_id)
         if farmer_record is None:
             return error_response(
                 PoolErrorCode.FARMER_NOT_KNOWN, f"Farmer with launcher_id {launcher_id.hex()} unknown."
@@ -246,7 +247,7 @@ class PoolServer:
         if authentication_token_error is not None:
             return authentication_token_error
 
-        farmer_record: Optional[FarmerRecord] = await self.pool.store.get_farmer_record(partial.payload.launcher_id)
+        farmer_record: FarmerRecord | None = await self.pool.store.get_farmer_record(partial.payload.launcher_id)
         if farmer_record is None:
             return error_response(
                 PoolErrorCode.FARMER_NOT_KNOWN,
@@ -283,8 +284,8 @@ class PoolServer:
             plogger.error('Failed to switch node', exc_info=True)
 
 
-server: Optional[PoolServer] = None
-runner: Optional[aiohttp.web.BaseRunner] = None
+server: PoolServer | None = None
+runner: aiohttp.web.BaseRunner | None = None
 run_forever_task = None
 
 

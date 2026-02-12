@@ -1,6 +1,5 @@
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Optional
 
 from chia.pools.pool_wallet_info import PoolState
 from chia.util.streamable import streamable, Streamable
@@ -24,18 +23,18 @@ class FarmerRecord(Streamable):
     difficulty: uint64  # Current difficulty for this farmer
     payout_instructions: str  # This is where the pool will pay out rewards to the farmer
     is_pool_member: bool  # If the farmer leaves the pool, this gets set to False
-    left_at: Optional[str]
-    left_last_at: Optional[str]
-    email: Optional[str]
+    left_at: str | None
+    left_last_at: str | None
+    email: str | None
     estimated_size: uint64
-    last_block_timestamp: Optional[uint64]
-    last_block_etw: Optional[uint64]
-    name: Optional[str]
-    fcm_token: Optional[str]
-    push_missing_partials_hours: Optional[uint64]
-    push_block_farmed: Optional[bool]
-    custom_difficulty: Optional[str]
-    minimum_payout: Optional[uint64]
+    last_block_timestamp: uint64 | None
+    last_block_etw: uint64 | None
+    name: str | None
+    fcm_token: str | None
+    push_missing_partials_hours: uint64 | None
+    push_block_farmed: bool | None
+    custom_difficulty: str | None
+    minimum_payout: uint64 | None
 
     @property
     def left_at_datetime(self):

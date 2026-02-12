@@ -6,7 +6,7 @@ import aiopg
 
 from isHex import isHex
 from collections import defaultdict
-from typing import Optional, Set, List, Tuple, Dict
+from typing import Set, List, Tuple, Dict
 
 from chia.pools.pool_wallet_info import PoolState
 from chia.protocols.pool_protocol import PostPartialPayload, PostPartialRequest
@@ -67,7 +67,7 @@ class PostgresqlPoolStore(object):
         self.pool_config = pool_config
         self.pool = None
 
-    async def _execute(self, sql, args=None) -> Optional[List]:
+    async def _execute(self, sql, args=None) -> List | None:
         async with self.pool.acquire() as conn:
             async with conn.cursor() as cursor:
                 await cursor.execute(sql, args or [])
@@ -180,7 +180,7 @@ class PostgresqlPoolStore(object):
                         args,
                     )
 
-    async def get_farmer_record(self, launcher_id: bytes32) -> Optional[FarmerRecord]:
+    async def get_farmer_record(self, launcher_id: bytes32) -> FarmerRecord | None:
         # TODO(pool): use cache
         row = await self._execute(
             "SELECT %s from farmer where launcher_id=%%s" % (', '.join((FarmerRecord.__annotations__.keys())), ),
@@ -190,7 +190,7 @@ class PostgresqlPoolStore(object):
             return None
         return self._row_to_farmer_record(row[0])
 
-    async def get_farmer_records(self, filters) -> Optional[FarmerRecord]:
+    async def get_farmer_records(self, filters) -> FarmerRecord | None:
         args = []
         where = []
         for k, op, v in filters:
@@ -222,7 +222,7 @@ class PostgresqlPoolStore(object):
     async def update_harvester(
         self,
         partial_payload: PostPartialPayload,
-        req_metadata: Optional[RequestMetadata],
+        req_metadata: RequestMetadata | None,
     ) -> None:
         if not (partial_payload or req_metadata):
             return
@@ -405,7 +405,7 @@ class PostgresqlPoolStore(object):
         )
 
     async def get_pending_partials(self) -> List[Tuple[
-        PostPartialRequest, Optional[RequestMetadata], uint64, uint64
+        PostPartialRequest, RequestMetadata | None, uint64, uint64
     ]]:
         partials = [
             (
@@ -425,11 +425,11 @@ class PostgresqlPoolStore(object):
     async def add_partial(
         self,
         partial_payload: PostPartialPayload,
-        req_metadata: Optional[RequestMetadata],
+        req_metadata: RequestMetadata | None,
         timestamp: uint64,
         difficulty: uint64,
-        time_taken: Optional[float] = -999.999,
-        error: Optional[str] = None,
+        time_taken: float | None = -999.999,
+        error: str | None = None,
     ) -> None:
         # Backward compatibility: support both param() (v2.6.0+) and size() (< v2.6.0)
         if hasattr(partial_payload.proof_of_space, 'param'):
@@ -478,7 +478,7 @@ class PostgresqlPoolStore(object):
                         ),
                     )
 
-    async def get_recent_partials(self, start_time, launcher_id: Optional[str] = None) -> List[Tuple[str, int, int]]:
+    async def get_recent_partials(self, start_time, launcher_id: str | None = None) -> List[Tuple[str, int, int]]:
         args = [start_time]
         if launcher_id:
             args.append(launcher_id)
@@ -589,7 +589,7 @@ class PostgresqlPoolStore(object):
     async def block_exists(self, singleton: str) -> bool:
         return bool(await self._execute('SELECT id FROM block WHERE singleton = %s', [singleton]))
 
-    async def get_farmer_record_from_singleton(self, singleton: bytes32) -> Optional[FarmerRecord]:
+    async def get_farmer_record_from_singleton(self, singleton: bytes32) -> FarmerRecord | None:
         rv = await self._execute('SELECT launcher_id FROM singleton WHERE singleton_name = %s', [
             singleton.hex()
         ])
@@ -597,7 +597,7 @@ class PostgresqlPoolStore(object):
             return None
         return await self.get_farmer_record(bytes32(bytes.fromhex(rv[0][0])))
 
-    async def singleton_exists(self, launcher_id: bytes32) -> Optional[bytes32]:
+    async def singleton_exists(self, launcher_id: bytes32) -> bytes32 | None:
         rv = await self._execute(
             'SELECT singleton_name FROM singleton WHERE launcher_id = %s LIMIT 1',
             (launcher_id.hex(), ),
@@ -919,7 +919,7 @@ class PostgresqlPoolStore(object):
         )
         return rowcount
 
-    async def get_notifications(self, launcher_ids: Optional[List[str]] = None):
+    async def get_notifications(self, launcher_ids: List[str] | None = None):
         extra = ''
         if launcher_ids:
             extra = ' AND n.launcher_id IN ({})'.format(', '.join(
@@ -946,7 +946,7 @@ class PostgresqlPoolStore(object):
         }
 
     async def update_notifications_last_sent(
-        self, launcher_id: str, name: str, when: Optional[datetime.datetime],
+        self, launcher_id: str, name: str, when: datetime.datetime | None,
     ):
         assert name in ('size_drop', )
         await self._execute(

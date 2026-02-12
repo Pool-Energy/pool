@@ -3,7 +3,7 @@ import logging
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from decimal import Decimal as D
-from typing import Dict, List, Mapping, Optional
+from typing import Dict, List, Mapping
 from urllib.parse import urlparse
 
 from chia.protocols.pool_protocol import PoolErrorCode, ErrorResponse
@@ -46,7 +46,7 @@ class RequestMetadata:
     def __post_init__(self):
         self.headers = {k.lower(): v for k, v in self.headers.items()}
 
-    def get_chia_version(self) -> Optional[str]:
+    def get_chia_version(self) -> str | None:
         if 'x-fast-farmer-version' in self.headers and 'x-chia-version' in self.headers:
             user_agent = self.headers.get('x-chia-version') + '.ff' + self.headers.get('x-fast-farmer-version')
         elif 'user-agent' in self.headers:
@@ -61,7 +61,7 @@ class RequestMetadata:
             logger.error('Failed to parse chia version %r: %r', user_agent, e)
             return
 
-    def get_host(self) -> Optional[str]:
+    def get_host(self) -> str | None:
         try:
             forwarded = self.headers.get('x-forwarded-host')
             if forwarded:
@@ -71,7 +71,7 @@ class RequestMetadata:
         except ValueError:
             return None
 
-    def get_remote(self) -> Optional[str]:
+    def get_remote(self) -> str | None:
         if self.remote:
             return self.remote.split(',', 1)[0] or None
 
@@ -85,7 +85,7 @@ class RequestMetadata:
 
 def payment_targets_to_additions(
         payment_targets: Dict, min_payment, launcher_min_payment: bool = True,
-        limit: Optional[int] = None,
+        limit: int | None = None,
 ) -> List:
     additions = []
     for ph, payment in list(payment_targets.items()):
@@ -231,7 +231,7 @@ async def create_transaction(
 
 
 def days_pooling(
-    joined_at: Optional[datetime], left_at: Optional[datetime], is_pool_member: bool,
+    joined_at: datetime | None, left_at: datetime | None, is_pool_member: bool,
 ) -> int:
     if not is_pool_member:
         return 0

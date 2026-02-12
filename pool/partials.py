@@ -5,7 +5,6 @@ import logging
 import time
 
 from decimal import Decimal
-from typing import Optional
 
 from chia.protocols.pool_protocol import PostPartialPayload
 
@@ -180,10 +179,10 @@ class Partials(object):
 
         self.scrub_lock = asyncio.Lock()
 
-        self.remove_old_partials_loop_task: Optional[asyncio.Task] = None
-        self.pool_estimated_size_loop_task: Optional[asyncio.Task] = None
-        self.missing_partials_loop_task: Optional[asyncio.Task] = None
-        self.scrub_loop_task: Optional[asyncio.Task] = None
+        self.remove_old_partials_loop_task: asyncio.Task | None = None
+        self.pool_estimated_size_loop_task: asyncio.Task | None = None
+        self.missing_partials_loop_task: asyncio.Task | None = None
+        self.scrub_loop_task: asyncio.Task | None = None
 
     async def load_from_store(self):
         """
@@ -387,11 +386,11 @@ class Partials(object):
     async def add_partial(
         self,
         partial_payload: PostPartialPayload,
-        req_metadata: Optional[RequestMetadata],
+        req_metadata: RequestMetadata | None,
         timestamp: uint64,
         difficulty: uint64,
-        time_taken: Optional[float] = 999.999,
-        error: Optional[str] = None,
+        time_taken: float | None = 999.999,
+        error: str | None = None,
     ) -> None:
 
         # Add partial into database

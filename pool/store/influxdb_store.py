@@ -2,7 +2,7 @@ import asyncio
 import logging
 import textwrap
 
-from typing import Dict, Optional
+from typing import Dict
 from influxdb_client import Point
 from influxdb_client.client.influxdb_client_async import InfluxDBClientAsync
 
@@ -60,7 +60,7 @@ class InfluxdbStore(object):
         partial_payload: PostPartialPayload,
         timestamp: uint64,
         difficulty: uint64,
-        error: Optional[str] = None,
+        error: str | None = None,
     ) -> None:
         p = Point('partial').time(int(timestamp) * 1000000000).tag(
             'launcher', partial_payload.launcher_id.hex()).tag(

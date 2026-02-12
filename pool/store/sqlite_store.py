@@ -1,7 +1,7 @@
 import aiosqlite
 
 from pathlib import Path
-from typing import Optional, Set, List, Tuple, Dict
+from typing import Set, List, Tuple, Dict
 
 from chia.pools.pool_wallet_info import PoolState
 
@@ -19,7 +19,7 @@ class SqlitePoolStore(AbstractPoolStore):
     def __init__(self, db_path: Path = Path("pooldb.sqlite")):
         super().__init__()
         self.db_path = db_path
-        self.connection: Optional[aiosqlite.Connection] = None
+        self.connection: aiosqlite.Connection | None = None
 
     async def connect(self):
         self.connection = await aiosqlite.connect(self.db_path)
@@ -88,7 +88,7 @@ class SqlitePoolStore(AbstractPoolStore):
         await cursor.close()
         await self.connection.commit()
 
-    async def get_farmer_record(self, launcher_id: bytes32) -> Optional[FarmerRecord]:
+    async def get_farmer_record(self, launcher_id: bytes32) -> FarmerRecord | None:
         # TODO(pool): use cache
         cursor = await self.connection.execute(
             "SELECT * from farmer where launcher_id=?",

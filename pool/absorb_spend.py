@@ -1,6 +1,6 @@
 import logging
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 from chia.consensus.block_rewards import calculate_pool_reward
 from chia.consensus.default_constants import DEFAULT_CONSTANTS
@@ -66,7 +66,7 @@ async def spend_with_fee(
     wallets: List[Dict],
     spends: List[CoinSpend],
     constants: ConsensusConstants,
-    absolute_fee: Optional[int],
+    absolute_fee: int | None,
     mojos_per_cost: int,
     used_fee_coins: List,
 ):

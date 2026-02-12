@@ -1,6 +1,6 @@
 import logging
 
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Tuple
 
 from chia.pools.pool_puzzles import (
     create_absorb_spend,
@@ -41,7 +41,7 @@ class LastSpendCoinNotFound(Exception):
         self.last_not_none_state = last_not_none_state
 
 
-async def get_coin_spend(node_rpc_client: FullNodeRpcClient, coin_record: CoinRecord) -> Optional[CoinSpend]:
+async def get_coin_spend(node_rpc_client: FullNodeRpcClient, coin_record: CoinRecord) -> CoinSpend | None:
     if not coin_record.spent:
         return None
     return await node_rpc_client.get_puzzle_and_solution(coin_record.coin.name(), coin_record.spent_block_index)
@@ -63,15 +63,15 @@ def validate_puzzle_hash(
 async def get_singleton_state(
     node_rpc_client: FullNodeRpcClient,
     launcher_id: bytes32,
-    farmer_record: Optional[FarmerRecord],
+    farmer_record: FarmerRecord | None,
     peak_height: uint32,
     confirmation_security_threshold: int,
     genesis_challenge: bytes32,
     raise_exc=False,
-) -> Optional[Tuple[CoinSpend, PoolState, PoolState]]:
+) -> Tuple[CoinSpend, PoolState, PoolState] | None:
     try:
         if farmer_record is None:
-            launcher_coin: Optional[CoinRecord] = await node_rpc_client.get_coin_record_by_name(launcher_id)
+            launcher_coin: CoinRecord | None = await node_rpc_client.get_coin_record_by_name(launcher_id)
             if launcher_coin is None:
                 logger.warning(f"Can not find genesis coin {launcher_id}")
                 return None
@@ -79,7 +79,7 @@ async def get_singleton_state(
                 logger.warning(f"Genesis coin {launcher_id} not spent")
                 return None
 
-            last_spend: Optional[CoinSpend] = await get_coin_spend(node_rpc_client, launcher_coin)
+            last_spend: CoinSpend | None = await get_coin_spend(node_rpc_client, launcher_coin)
             delay_time, delay_puzzle_hash = get_delayed_puz_info_from_launcher_spend(last_spend)
             saved_state = solution_to_pool_state(last_spend)
             assert last_spend is not None and saved_state is not None
@@ -93,7 +93,7 @@ async def get_singleton_state(
         last_not_none_state: PoolState = saved_state
         assert last_spend is not None
 
-        last_coin_record: Optional[CoinRecord] = await node_rpc_client.get_coin_record_by_name(last_spend.coin.name())
+        last_coin_record: CoinRecord | None = await node_rpc_client.get_coin_record_by_name(last_spend.coin.name())
         if last_coin_record is None:
             if raise_exc:
                 raise LastSpendCoinNotFound(last_not_none_state)
@@ -104,11 +104,11 @@ async def get_singleton_state(
 
         while True:
             # Get next coin solution
-            next_coin: Optional[Coin] = get_most_recent_singleton_coin_from_coin_spend(last_spend)
+            next_coin: Coin | None = get_most_recent_singleton_coin_from_coin_spend(last_spend)
             if next_coin is None:
                 # This means the singleton is invalid
                 return None
-            next_coin_record: Optional[CoinRecord] = await node_rpc_client.get_coin_record_by_name(next_coin.name())
+            next_coin_record: CoinRecord | None = await node_rpc_client.get_coin_record_by_name(next_coin.name())
             assert next_coin_record is not None
 
             if not next_coin_record.spent:
@@ -124,10 +124,10 @@ async def get_singleton_state(
                     return None
                 break
 
-            last_spend: Optional[CoinSpend] = await get_coin_spend(node_rpc_client, next_coin_record)
+            last_spend: CoinSpend | None = await get_coin_spend(node_rpc_client, next_coin_record)
             assert last_spend is not None
 
-            pool_state: Optional[PoolState] = solution_to_pool_state(last_spend)
+            pool_state: PoolState | None = solution_to_pool_state(last_spend)
 
             if pool_state is not None:
                 last_not_none_state = pool_state
@@ -147,7 +147,7 @@ async def get_singleton_state(
 def get_farmed_height(
     reward_coin_record: CoinRecord,
     genesis_challenge: bytes32
-) -> Optional[uint32]:
+) -> uint32 | None:
     for block_index in range(
         reward_coin_record.confirmed_block_index,
         reward_coin_record.confirmed_block_index - 128,
@@ -168,14 +168,14 @@ async def create_absorb_transaction(
     peak_height: uint32,
     reward_coin_records: List[CoinRecord],
     fee: AbsorbFee,
-    mempool_fee_threshold: Optional[int],
-    absolute_fee: Optional[int],
-    used_fee_coins: Optional[List],
+    mempool_fee_threshold: int | None,
+    absolute_fee: int | None,
+    used_fee_coins: List | None,
     mempool_full_pct: int,
     mojos_per_cost: int,
     constants: ConsensusConstants,
-) -> Optional[SpendBundle]:
-    singleton_state_tuple: Optional[Tuple[CoinSpend, PoolState, PoolState]] = await get_singleton_state(
+) -> SpendBundle | None:
+    singleton_state_tuple: Tuple[CoinSpend, PoolState, PoolState] | None = await get_singleton_state(
         node_rpc_client,
         farmer_record.launcher_id,
         farmer_record,
@@ -195,14 +195,14 @@ async def create_absorb_transaction(
         logger.info(f"Don't try to absorb from former farmer {farmer_record.launcher_id}.")
         return None
 
-    launcher_coin_record: Optional[CoinRecord] = await node_rpc_client.get_coin_record_by_name(
+    launcher_coin_record: CoinRecord | None = await node_rpc_client.get_coin_record_by_name(
         farmer_record.launcher_id
     )
     assert launcher_coin_record is not None
 
     all_spends: List[CoinSpend] = []
     for reward_coin_record in reward_coin_records:
-        found_block_index: Optional[uint32] = get_farmed_height(reward_coin_record, constants.GENESIS_CHALLENGE)
+        found_block_index: uint32 | None = get_farmed_height(reward_coin_record, constants.GENESIS_CHALLENGE)
         if not found_block_index:
             logger.info(f"Received reward {reward_coin_record.coin} that is not a pool reward.")
             continue
@@ -248,7 +248,7 @@ async def find_reward_from_coinrecord(
     node_rpc_client: FullNodeRpcClient,
     store,
     coin_record: CoinRecord,
-) -> Optional[Tuple[CoinRecord, FarmerRecord]]:
+) -> Tuple[CoinRecord, FarmerRecord] | None:
     farmer: FarmerRecord = await store.get_farmer_record_from_singleton(
         coin_record.coin.parent_coin_info
     )
@@ -275,7 +275,7 @@ async def find_last_reward_from_launcher(
     node_rpc_client: FullNodeRpcClient,
     farmer: FarmerRecord,
     current_reward_timestamp: uint64,
-) -> Optional[CoinRecord]:
+) -> CoinRecord | None:
     end = int(current_reward_timestamp) - 1
     last_reward = None
 
