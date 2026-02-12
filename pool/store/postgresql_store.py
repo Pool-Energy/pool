@@ -12,9 +12,12 @@ from chia.pools.pool_wallet_info import PoolState
 from chia.protocols.pool_protocol import PostPartialPayload, PostPartialRequest
 from chia.types.blockchain_format.coin import Coin
 from chia.types.blockchain_format.proof_of_space import get_plot_id
-from chia.types.coin_record import CoinRecord
 
-from chia_rs import G1Element, CoinSpend
+from chia_rs import (
+    G1Element,
+    CoinRecord,
+    CoinSpend,
+)
 from chia_rs.sized_ints import uint64
 from chia_rs.sized_bytes import bytes32
 

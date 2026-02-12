@@ -7,8 +7,8 @@ from influxdb_client import Point
 from influxdb_client.client.influxdb_client_async import InfluxDBClientAsync
 
 from chia.protocols.pool_protocol import PostPartialPayload
-from chia.types.coin_record import CoinRecord
 
+from chia_rs import CoinRecord
 from chia_rs.sized_bytes import bytes32
 from chia_rs.sized_ints import uint64
 

@@ -16,7 +16,6 @@ from chia.pools.pool_wallet_info import PoolState
 from chia.full_node.full_node_rpc_client import FullNodeRpcClient
 from chia.types.blockchain_format.coin import Coin
 from chia.types.blockchain_format.program import Program
-from chia.types.coin_record import CoinRecord
 
 from chia_rs.sized_bytes import bytes32
 from chia_rs.sized_ints import uint32, uint64
@@ -24,6 +23,7 @@ from chia_rs import (
     G2Element,
     BlockRecord,
     ConsensusConstants,
+    CoinRecord,
     CoinSpend,
     SpendBundle,
 )

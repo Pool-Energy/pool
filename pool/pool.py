@@ -39,7 +39,6 @@ from chia.wallet.wallet_request_types import (
 )
 from chia.types.blockchain_format.coin import Coin
 from chia.types.blockchain_format.proof_of_space import verify_and_get_quality_string
-from chia.types.coin_record import CoinRecord
 from chia.util.bech32m import decode_puzzle_hash
 from chia.consensus.constants import replace_str_to_bytes
 from chia.consensus.default_constants import DEFAULT_CONSTANTS
@@ -66,6 +65,7 @@ from chia_rs.sized_ints import uint8, uint16, uint32, uint64
 from chia_rs import (
     AugSchemeMPL,
     G1Element,
+    CoinRecord,
     CoinSpend,
     ConsensusConstants,
     EndOfSubSlotBundle,
