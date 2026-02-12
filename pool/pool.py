@@ -1497,9 +1497,7 @@ class Pool:
             self.recent_points_added.put(pos_hash, uint64(1))
 
             # Now we need to check to see that the singleton in the blockchain is still assigned to this pool
-            singleton_state_tuple: 
-                Tuple[CoinSpend, PoolState, bool]
-             | None = await self.get_and_validate_singleton_state(partial.payload.launcher_id)
+            singleton_state_tuple: Tuple[CoinSpend, PoolState, bool] | None = await self.get_and_validate_singleton_state(partial.payload.launcher_id)
 
             if singleton_state_tuple is None:
                 self.log.info(f"Invalid singleton {partial.payload.launcher_id}")
@@ -1575,9 +1573,7 @@ class Pool:
                     f"Farmer with launcher_id {request.payload.launcher_id} already known.",
                 )
 
-            singleton_state_tuple: 
-                Tuple[CoinSpend, PoolState, bool]
-             | None = await self.get_and_validate_singleton_state(request.payload.launcher_id)
+            singleton_state_tuple: Tuple[CoinSpend, PoolState, bool] | None = await self.get_and_validate_singleton_state(request.payload.launcher_id)
 
             if singleton_state_tuple is None:
                 return error_dict(PoolErrorCode.INVALID_SINGLETON, f"Invalid singleton {request.payload.launcher_id}")
@@ -1649,9 +1645,7 @@ class Pool:
             await self.launchers.add_last_reward(farmer_record)
 
             # Add new farmer singleton to the list of known singleton puzzles
-            singleton_state_tuple: 
-                Tuple[CoinSpend, PoolState, bool]
-             | None = await self.get_and_validate_singleton_state(request.payload.launcher_id)
+            singleton_state_tuple: Tuple[CoinSpend, PoolState, bool] | None = await self.get_and_validate_singleton_state(request.payload.launcher_id)
 
             return PostFarmerResponse(self.welcome_message).to_json_dict()
 
@@ -1688,9 +1682,7 @@ class Pool:
         if farmer_record is None:
             return error_dict(PoolErrorCode.FARMER_NOT_KNOWN, f"Farmer with launcher_id {launcher_id} not known.")
 
-        singleton_state_tuple: 
-            Tuple[CoinSpend, PoolState, bool]
-         | None = await self.get_and_validate_singleton_state(launcher_id)
+        singleton_state_tuple: Tuple[CoinSpend, PoolState, bool] | None = await self.get_and_validate_singleton_state(launcher_id)
 
         if singleton_state_tuple is None:
             return error_dict(PoolErrorCode.INVALID_SINGLETON, f"Invalid singleton {request.payload.launcher_id}")
