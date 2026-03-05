@@ -493,7 +493,8 @@ class Pool:
         def dump(item):
             if isinstance(item, Streamable):
                 return item.to_json_dict()
-                return [dump(i) for i in item]
+            elif isinstance(item, CoinRecord):
+                return item.to_json_dict()
             elif isinstance(item, (list, tuple)):
                 return [dump(i) for i in item]
             elif isinstance(item, dict):
