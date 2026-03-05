@@ -21,7 +21,12 @@ from chia.wallet.util.tx_config import DEFAULT_TX_CONFIG, CoinSelectionConfig, T
 from chia.wallet.util.compute_additions import compute_additions
 from chia.wallet.wallet import Wallet
 from chia.wallet.wallet_info import WalletInfo
-from chia.wallet.wallet_request_types import CreateSignedTransactionsResponse
+from chia.wallet.wallet_request_types import (
+    Addition,
+    CreateSignedTransaction,
+    CreateSignedTransactionsResponse,
+    GetPrivateKey,
+)
 
 from chia_rs.sized_bytes import bytes32
 from chia_rs.sized_ints import uint32, uint64
@@ -37,7 +42,7 @@ from chia_rs import (
 from .fee import get_cost
 
 
-logger = logging.getLogger('absorb_spend')
+logger = logging.getLogger("absorb_spend")
 
 
 # FIXME: use https://github.com/Chia-Network/chia-blockchain/blob/c4f2595e54d75b844a85df2bf405335224cfc4af/chia/consensus/block_rewards.py#L19-L30
@@ -45,7 +50,7 @@ COIN_SELECTION_CONFIG = CoinSelectionConfig(
     uint64(0),
     uint64(DEFAULT_CONSTANTS.MAX_COIN_AMOUNT),
     [uint64(0), uint64(875000000000)],
-    []
+    [],
 )
 ABSORB_TX_CONFIG = TXConfig(
     COIN_SELECTION_CONFIG.min_coin_amount,
@@ -74,24 +79,36 @@ async def spend_with_fee(
     p2_coin = spends[1].coin
 
     for wallet in wallets:
-        if wallet['puzzle_hash'] == rewarded_coin.puzzle_hash:
+        if wallet["puzzle_hash"] == rewarded_coin.puzzle_hash:
             break
     else:
-        raise RuntimeError(f"No wallet with puzzle hash {rewarded_coin.puzzle_hash.hex()} found")
+        raise RuntimeError(
+            f"No wallet with puzzle hash {rewarded_coin.puzzle_hash.hex()} found"
+        )
 
     spend_reward = False
     if not spend_reward:
-        transaction: CreateSignedTransactionsResponse = await wallet['rpc_client'].create_signed_transactions([{
-            'puzzle_hash': wallet['puzzle_hash'],
-            'amount': 5 * 10 ** 10,
-        }], tx_config=ABSORB_TX_CONFIG)
+        transaction: CreateSignedTransactionsResponse = await wallet[
+            "rpc_client"
+        ].create_signed_transactions(
+            CreateSignedTransaction(
+                additions=[
+                    Addition(
+                        puzzle_hash=wallet["puzzle_hash"], amount=uint64(5 * 10**10)
+                    )
+                ],
+                fee=uint64(0),
+            ),
+            tx_config=ABSORB_TX_CONFIG,
+        )
 
-        if hasattr(transaction.signed_tx, 'spend_bundle'):
+        if hasattr(transaction.signed_tx, "spend_bundle"):
             for coin in transaction.signed_tx.spend_bundle.removals():
                 if (
-                    coin.name() not in used_fee_coins and  # Do not use same coin twice between absorbs
-                    coin.amount >= (absolute_fee or 200000000) and
-                    coin.amount != calculate_pool_reward(uint32(1))
+                    coin.name()
+                    not in used_fee_coins  # Do not use same coin twice between absorbs
+                    and coin.amount >= (absolute_fee or 200000000)
+                    and coin.amount != calculate_pool_reward(uint32(1))
                 ):
                     break
             else:
@@ -101,12 +118,20 @@ async def spend_with_fee(
 
         spend_coin = coin
 
-        transaction: CreateSignedTransactionsResponse = await wallet['rpc_client'].create_signed_transactions(
-            additions=[{'puzzle_hash': wallet['puzzle_hash'], 'amount': 0}],
+        transaction: CreateSignedTransactionsResponse = await wallet[
+            "rpc_client"
+        ].create_signed_transactions(
+            CreateSignedTransaction(
+                additions=[
+                    Addition(puzzle_hash=wallet["puzzle_hash"], amount=uint64(0))
+                ],
+                coins=[spend_coin],
+                fee=uint64(1),
+            ),
             tx_config=DEFAULT_TX_CONFIG,
-            coins=[spend_coin],
-            fee=uint64(1),
-            extra_conditions=(AssertCoinAnnouncement(asserted_id=p2_coin.name(), asserted_msg=b"$"),)
+            extra_conditions=(
+                AssertCoinAnnouncement(asserted_id=p2_coin.name(), asserted_msg=b"$"),
+            ),
         )
 
         original_sb = SpendBundle(spends, G2Element())
@@ -114,9 +139,11 @@ async def spend_with_fee(
     else:
         spend_coin = rewarded_coin
 
-        keys: Dict = await wallet['rpc_client'].get_private_key(wallet['fingerprint'])
+        keys = await wallet["rpc_client"].get_private_key(
+            GetPrivateKey(fingerprint=wallet["fingerprint"])
+        )
 
-        private_key = PrivateKey.from_bytes(bytes.fromhex(keys['sk']))
+        private_key = keys.private_key.sk
         private_key = master_sk_to_wallet_sk(private_key, 0)
         pubkey = private_key.get_g1()
 
@@ -125,7 +152,7 @@ async def spend_with_fee(
         sb = await create_spendbundle_with_fee(
             constants,
             private_key,
-            wallet['puzzle_hash'],
+            wallet["puzzle_hash"],
             puzzle,
             list(spends),
             spend_coin,
@@ -139,15 +166,28 @@ async def spend_with_fee(
     fee = uint64((await get_cost(sb, peak_height, constants)) * mojos_per_cost)
 
     if fee > spend_coin.amount:
-        raise NoCoinForFee(f"Selected fee coin lower than the spend fee ({fee} > {spend_coin.amount})!")
+        raise NoCoinForFee(
+            f"Selected fee coin lower than the spend fee ({fee} > {spend_coin.amount})!"
+        )
 
     if not spend_reward:
-        transaction: CreateSignedTransactionsResponse = await wallet['rpc_client'].create_signed_transactions(
-            additions=[{'puzzle_hash': wallet['puzzle_hash'], 'amount': spend_coin.amount - fee}],
+        transaction: CreateSignedTransactionsResponse = await wallet[
+            "rpc_client"
+        ].create_signed_transactions(
+            CreateSignedTransaction(
+                additions=[
+                    Addition(
+                        puzzle_hash=wallet["puzzle_hash"],
+                        amount=uint64(spend_coin.amount - fee),
+                    )
+                ],
+                coins=[spend_coin],
+                fee=uint64(fee),
+            ),
             tx_config=DEFAULT_TX_CONFIG,
-            coins=[spend_coin],
-            fee=uint64(fee),
-            extra_conditions=(AssertCoinAnnouncement(asserted_id=p2_coin.name(), asserted_msg=b"$"),)
+            extra_conditions=(
+                AssertCoinAnnouncement(asserted_id=p2_coin.name(), asserted_msg=b"$"),
+            ),
         )
         used_fee_coins.append(spend_coin.name())
         return SpendBundle.aggregate([original_sb, transaction.signed_tx.spend_bundle])
@@ -155,7 +195,7 @@ async def spend_with_fee(
         return await create_spendbundle_with_fee(
             constants,
             private_key,
-            wallet['puzzle_hash'],
+            wallet["puzzle_hash"],
             puzzle,
             list(spends),
             spend_coin,
@@ -165,37 +205,34 @@ async def spend_with_fee(
 
 
 async def create_spendbundle_with_fee(
-    constants,
-    private_key,
-    puzzle_hash,
-    puzzle,
-    spends,
-    spend_coin,
-    p2_coin,
-    fee
+    constants, private_key, puzzle_hash, puzzle, spends, spend_coin, p2_coin, fee
 ):
-    primaries: List[Dict[str, Any]] = [{
-        'puzzlehash': puzzle_hash,
-        'amount': spend_coin.amount - fee,
-    }]
+    primaries: List[Dict[str, Any]] = [
+        {
+            "puzzlehash": puzzle_hash,
+            "amount": spend_coin.amount - fee,
+        }
+    ]
 
     message_list = [spend_coin.name()]
     for i in primaries:
         message_list.append(
-            Coin(spend_coin.name(),
-            i['puzzlehash'],
-            i['amount']).name()
+            Coin(spend_coin.name(), i["puzzlehash"], i["amount"]).name()
         )
     message: bytes32 = std_hash(b"".join(message_list))
 
-    wi = WalletInfo(0, '', 0, '')
+    wi = WalletInfo(0, "", 0, "")
     w = await Wallet.create(None, wi)
 
     solution: Program = w.make_solution(
         primaries=primaries,
         coin_announcements={message},
         fee=fee,
-        coin_announcements_to_assert={AssertCoinAnnouncement(asserted_id=p2_coin.name(), asserted_msg=bytes(b"$")).name()},
+        coin_announcements_to_assert={
+            AssertCoinAnnouncement(
+                asserted_id=p2_coin.name(), asserted_msg=bytes(b"$")
+            ).name()
+        },
     )
 
     coin_spend = CoinSpend(
@@ -205,14 +242,11 @@ async def create_spendbundle_with_fee(
     )
 
     conditions_dict = conditions_dict_for_solution(
-        coin_spend.puzzle_reveal,
-        coin_spend.solution,
-        constants.MAX_BLOCK_COST_CLVM
+        coin_spend.puzzle_reveal, coin_spend.solution, constants.MAX_BLOCK_COST_CLVM
     )
 
     synthetic_secret_key = calculate_synthetic_secret_key(
-        private_key,
-        DEFAULT_HIDDEN_PUZZLE_HASH
+        private_key, DEFAULT_HIDDEN_PUZZLE_HASH
     )
 
     signatures = []
@@ -222,7 +256,11 @@ async def create_spendbundle_with_fee(
         signatures.append(signature)
 
     for cwa in conditions_dict.get(ConditionOpcode.AGG_SIG_ME, []):
-        msg = cwa.vars[1] + bytes(coin_spend.coin.name()) + constants.AGG_SIG_ME_ADDITIONAL_DATA
+        msg = (
+            cwa.vars[1]
+            + bytes(coin_spend.coin.name())
+            + constants.AGG_SIG_ME_ADDITIONAL_DATA
+        )
         signature = AugSchemeMPL.sign(synthetic_secret_key, msg)
         signatures.append(signature)
 

@@ -4,7 +4,11 @@ import math
 from decimal import Decimal as D
 from typing import Dict, List, Tuple
 
-from chia.wallet.wallet_request_types import CreateSignedTransactionsResponse
+from chia.wallet.wallet_request_types import (
+    Addition,
+    CreateSignedTransaction,
+    CreateSignedTransactionsResponse,
+)
 from chia.wallet.wallet_rpc_client import WalletRpcClient
 from chia.wallet.util.tx_config import DEFAULT_TX_CONFIG
 
@@ -18,7 +22,7 @@ from .util import (
 )
 
 
-logger = logging.getLogger('payment')
+logger = logging.getLogger("payment")
 
 
 async def subtract_fees(
@@ -31,16 +35,22 @@ async def subtract_fees(
     enable_launcher_min_payment: bool,
     constants,
 ) -> Tuple[List, uint64]:
-    transaction: CreateSignedTransactionsResponse = await wallet_rpc_client.create_signed_transactions(
-        additions=additions,
-        tx_config=DEFAULT_TX_CONFIG,
+    transaction: CreateSignedTransactionsResponse = (
+        await wallet_rpc_client.create_signed_transactions(
+            CreateSignedTransaction(
+                additions=[
+                    Addition(puzzle_hash=a["puzzle_hash"], amount=uint64(a["amount"]))
+                    for a in additions
+                ],
+                fee=uint64(0),
+            ),
+            tx_config=DEFAULT_TX_CONFIG,
+        )
     )
 
-    total_cost = (await get_cost(
-        transaction.signed_tx.spend_bundle,
-        height,
-        constants
-    )) * mojos_per_cost
+    total_cost = (
+        await get_cost(transaction.signed_tx.spend_bundle, height, constants)
+    ) * mojos_per_cost
 
     cost_per_target = math.ceil(D(total_cost) / D(len(payment_targets)))
 
@@ -48,15 +58,15 @@ async def subtract_fees(
         cost_per_payout = math.ceil(cost_per_target / len(targets))
         pending_amount = 0
         for i in targets:
-            subtract = i['amount'] - cost_per_payout - pending_amount
+            subtract = i["amount"] - cost_per_payout - pending_amount
             if subtract < 0:
-                i['tx_fee'] = i['amount']
-                i['amount'] = 0
+                i["tx_fee"] = i["amount"]
+                i["amount"] = 0
                 pending_amount = abs(subtract)
             else:
-                i['tx_fee'] = cost_per_payout + pending_amount
+                i["tx_fee"] = cost_per_payout + pending_amount
                 pending_amount = 0
-                i['amount'] = subtract
+                i["amount"] = subtract
         if pending_amount > 0:
             raise RuntimeError("Launcher id does not have enough for a fee payment")
 
@@ -85,10 +95,10 @@ async def create_share(
 
     additions: Dict = {}
     share = {
-        'pool_fee_amount': 0,
-        'referral_fee_amount': 0,
-        'additions': additions,
-        'amount_to_distribute': 0,
+        "pool_fee_amount": 0,
+        "referral_fee_amount": 0,
+        "additions": additions,
+        "amount_to_distribute": 0,
     }
 
     if not farmer_points_data or total_points <= 0:
@@ -100,24 +110,27 @@ async def create_share(
     referrals = await store.get_referrals()
 
     for i in farmer_points_data:
-        points = i['points']
-        ph = i['payout_instructions']
+        points = i["points"]
+        ph = i["payout_instructions"]
 
         if points <= 0:
             continue
 
         if ph not in additions:
-            additions[ph] = {'amount': 0, 'pool_fee': 0, 'launcher_ids': []}
-        if i['launcher_id'] not in additions[ph]['launcher_ids']:
-            additions[ph]['launcher_ids'].append(i['launcher_id'])
+            additions[ph] = {"amount": 0, "pool_fee": 0, "launcher_ids": []}
+        if i["launcher_id"] not in additions[ph]["launcher_ids"]:
+            additions[ph]["launcher_ids"].append(i["launcher_id"])
 
         farmer_stay_fee: D = stay_fee_discount(
-            stay_fee_discount_v, stay_fee_length, i['days_pooling'],
+            stay_fee_discount_v,
+            stay_fee_length,
+            i["days_pooling"],
         )
-        size_fee: D = D('0')
+        size_fee: D = D("0")
         if size_fee_discount:
             size_fee = size_discount(
-                i['estimated_size'], size_fee_discount,
+                i["estimated_size"],
+                size_fee_discount,
             )
 
         mojos = points * mojo_per_point
@@ -127,39 +140,50 @@ async def create_share(
         # Just be extra sure pool is getting enough fee
         # Handle case where pool_fee = 0 (no pool fee)
         if pool_fee > 0:
-            assert pool_fee_pct > pool_fee / 2, "Pool fee after discounts is less of configured pool fee"
+            assert pool_fee_pct > pool_fee / 2, (
+                "Pool fee after discounts is less of configured pool fee"
+            )
 
         addition = mojos * (1 - pool_fee_pct)
         pool_fee_mojos = mojos - addition
 
-        additions[ph]['amount'] += int(addition)
-        additions[ph]['pool_fee'] += int(pool_fee_mojos)
+        additions[ph]["amount"] += int(addition)
+        additions[ph]["pool_fee"] += int(pool_fee_mojos)
 
         if ph in referrals:
             # Divide between pool fee and referral fee
             referral_fee = pool_fee_mojos * D(0.2)  # 20% fixed for now
-            share['pool_fee_amount'] += pool_fee_mojos - referral_fee
+            share["pool_fee_amount"] += pool_fee_mojos - referral_fee
 
             referral_fee = math.floor(referral_fee)
-            share['referral_fee_amount'] += referral_fee
+            share["referral_fee_amount"] += referral_fee
 
             referral = referrals[ph]
-            target_ph = referral['target_payout_instructions']
+            target_ph = referral["target_payout_instructions"]
             if target_ph not in additions:
                 additions[target_ph] = {
-                    'amount': 0, 'pool_fee': 0, 'launcher_ids': [],
+                    "amount": 0,
+                    "pool_fee": 0,
+                    "launcher_ids": [],
                 }
 
-            additions[target_ph]['amount'] += referral_fee
-            if referral['target_launcher_id'] not in additions[target_ph]['launcher_ids']:
-                additions[target_ph]['launcher_ids'].append(referral['target_launcher_id'])
+            additions[target_ph]["amount"] += referral_fee
+            if (
+                referral["target_launcher_id"]
+                not in additions[target_ph]["launcher_ids"]
+            ):
+                additions[target_ph]["launcher_ids"].append(
+                    referral["target_launcher_id"]
+                )
 
-            additions[ph]['referral'] = referral['id']
-            additions[ph]['referral_amount'] = referral_fee
+            additions[ph]["referral"] = referral["id"]
+            additions[ph]["referral_amount"] = referral_fee
         else:
-            share['pool_fee_amount'] += pool_fee_mojos
+            share["pool_fee_amount"] += pool_fee_mojos
 
-    share['pool_fee_amount'] = math.floor(share['pool_fee_amount'])
-    share['amount_to_distribute'] = sum(map(lambda x: x['amount'], additions.values()))
-    share['remainings'] = int(total_amount - share['amount_to_distribute'] - share['pool_fee_amount'])
+    share["pool_fee_amount"] = math.floor(share["pool_fee_amount"])
+    share["amount_to_distribute"] = sum(map(lambda x: x["amount"], additions.values()))
+    share["remainings"] = int(
+        total_amount - share["amount_to_distribute"] - share["pool_fee_amount"]
+    )
     return share
