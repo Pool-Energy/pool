@@ -1,11 +1,11 @@
-git+https://github.com/pool-energy/chia-blockchain.git@release/2.6.0#egg=chia-blockchain
-chia_rs==0.35.2
-setuptools>=82.0.0
-uvloop~=0.22.0
+git+https://github.com/pool-energy/chia-blockchain.git@release/2.7.0#egg=chia-blockchain
+chia_rs==0.41.1
+setuptools>=82.0.1
+uvloop~=0.22.1
 aiopg==1.4.0
-aiohttp~=3.13.0
+aiohttp~=3.13.3
 pytest==8.3.3
-cachetools==7.0.1
+cachetools==7.0.5
 influxdb-client==1.50.0
 python-json-logger==4.0.0
 py-spy==0.4.1

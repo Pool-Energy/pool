@@ -17,7 +17,7 @@ from chia.wallet.wallet_request_types import (
     SelectCoins,
 )
 
-from chia_rs.sized_ints import uint16
+from chia_rs.sized_ints import uint16, uint32
 
 
 logger = logging.getLogger("util")
@@ -235,7 +235,7 @@ async def create_transaction(
 
             balance = (
                 await wallet["rpc_client"].get_wallet_balance(
-                    GetWalletBalance(wallet["id"])
+                    GetWalletBalance(wallet_id=uint32(wallet["id"]))
                 )
             ).wallet_balance
             logger.debug(f"Get balance for wallet {wallet['id']}: {balance}")

@@ -221,6 +221,23 @@ class PoolServer:
         start_time = time.time()
         request = await request_obj.json()
 
+        # Compatibility shim for older farmers (<2.7.0) with proof_of_space format, normalize proof_of_space fields
+        proof_of_space = request.get('payload', {}).get('proof_of_space', {})
+        if proof_of_space and 'size' in proof_of_space:
+            raw_size = int(proof_of_space['size'])
+            if 'plot_index' not in proof_of_space:
+                proof_of_space['plot_index'] = 0
+            if 'meta_group' not in proof_of_space:
+                proof_of_space['meta_group'] = 0
+            if 'version' not in proof_of_space:
+                if raw_size & 0x80:
+                    proof_of_space['version'] = 1
+                    proof_of_space['strength'] = raw_size & 0x7F
+                    proof_of_space['size'] = 0
+                else:
+                    proof_of_space['version'] = 0
+                    proof_of_space['strength'] = 0
+
         try:
             partial: PostPartialRequest = PostPartialRequest.from_json_dict(request)
         except ValueError as e:
