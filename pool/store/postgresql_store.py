@@ -11,7 +11,6 @@ from typing import Set, List, Tuple, Dict
 from chia.pools.pool_wallet_info import PoolState
 from chia.protocols.pool_protocol import PostPartialPayload, PostPartialRequest
 from chia.types.blockchain_format.coin import Coin
-from chia.types.blockchain_format.proof_of_space import get_plot_id
 
 from chia_rs import (
     G1Element,
@@ -459,7 +458,7 @@ class PostgresqlPoolStore(object):
                         difficulty,
                         error,
                         partial_payload.harvester_id.hex(),
-                        get_plot_id(partial_payload.proof_of_space).hex(),
+                        partial_payload.proof_of_space.compute_plot_id().hex(),
                         (str((req_metadata.get_chia_version() or ''))[:20] or None) if req_metadata else None,
                         req_metadata.get_remote() if req_metadata else None,
                         req_metadata.get_host() if req_metadata else None,
