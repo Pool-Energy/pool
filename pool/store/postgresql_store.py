@@ -406,18 +406,40 @@ class PostgresqlPoolStore(object):
     async def get_pending_partials(self) -> List[Tuple[
         PostPartialRequest, RequestMetadata | None, uint64, uint64
     ]]:
-        partials = [
-            (
-                PostPartialRequest.from_json_dict(i[0]),
-                RequestMetadata.from_json_dict(i[1]) if i[1] else None,
-                uint64(i[2]),
-                uint64(i[3]),
-            )
-            for i in await self._execute(
-                "SELECT partial, req_metadata, time_received, points_received FROM pending_partial "
-                "ORDER BY id ASC"
-            )
-        ]
+        results = []
+        for i in await self._execute(
+            "SELECT partial, req_metadata, time_received, points_received FROM pending_partial "
+            "ORDER BY id ASC"
+        ):
+            try:
+                partial_dict = i[0]
+                if 'payload' in partial_dict and 'proof_of_space' in partial_dict['payload']:
+                    proof_of_space = partial_dict['payload']['proof_of_space']
+                    if 'size' in proof_of_space:
+                        raw_size = int(proof_of_space['size'])
+                        if 'plot_index' not in proof_of_space:
+                            proof_of_space['plot_index'] = 0
+                        if 'meta_group' not in proof_of_space:
+                            proof_of_space['meta_group'] = 0
+                        if 'version' not in proof_of_space:
+                            if raw_size & 0x80:
+                                proof_of_space['version'] = 1
+                                proof_of_space['strength'] = raw_size & 0x7F
+                            else:
+                                proof_of_space['version'] = 0
+                                proof_of_space['strength'] = 0
+
+                results.append((
+                    PostPartialRequest.from_json_dict(partial_dict),
+                    RequestMetadata.from_json_dict(i[1]) if i[1] else None,
+                    uint64(i[2]),
+                    uint64(i[3]),
+                ))
+            except Exception as e:
+                logger.error(f"Failed to load pending partial, skipping: {e}")
+                continue
+
+        partials = results
         await self._execute("DELETE FROM pending_partial")
         return partials
 

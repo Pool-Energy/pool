@@ -233,7 +233,6 @@ class PoolServer:
                 if raw_size & 0x80:
                     proof_of_space['version'] = 1
                     proof_of_space['strength'] = raw_size & 0x7F
-                    proof_of_space['size'] = 0
                 else:
                     proof_of_space['version'] = 0
                     proof_of_space['strength'] = 0
