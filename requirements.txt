@@ -1,3 +1,4 @@
+zstd==1.5.7.3
 git+https://github.com/pool-energy/chia-blockchain.git@release/2.7.0#egg=chia-blockchain
 chia_rs==0.41.1
 setuptools>=82.0.1
