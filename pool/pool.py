@@ -894,6 +894,7 @@ class Pool:
                             False,
                             0,
                             None,
+                            used_fee_coins,
                             self.blockchain_mempool_full_pct,
                             self.mojos_per_cost,
                             self.constants,
