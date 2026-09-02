@@ -2,7 +2,7 @@
 # FINAL ENVIRONMENT #
 #####################
 
-FROM debian:bookworm-slim
+FROM debian:bookworm-20260112-slim
 
 RUN apt-get update && \
     apt-get upgrade -y && \
