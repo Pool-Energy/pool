@@ -1,6 +1,5 @@
-from chia.consensus.cost_calculator import NPCResult
 from chia.full_node.bundle_tools import simple_solution_generator
-from chia._tests.util.get_name_puzzle_conditions import get_name_puzzle_conditions
+from chia._tests.util.get_name_puzzle_conditions import get_name_puzzle_conditions, NPCResult
 
 from chia_rs.sized_ints import uint32, uint64
 from chia_rs import SpendBundle
