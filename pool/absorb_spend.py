@@ -51,12 +51,16 @@ COIN_SELECTION_CONFIG = CoinSelectionConfig(
     uint64(DEFAULT_CONSTANTS.MAX_COIN_AMOUNT),
     [uint64(0), uint64(875000000000)],
     [],
+    [],
+    None,
 )
 ABSORB_TX_CONFIG = TXConfig(
     COIN_SELECTION_CONFIG.min_coin_amount,
     COIN_SELECTION_CONFIG.max_coin_amount,
     COIN_SELECTION_CONFIG.excluded_coin_amounts,
     COIN_SELECTION_CONFIG.excluded_coin_ids,
+    COIN_SELECTION_CONFIG.included_coin_ids,
+    COIN_SELECTION_CONFIG.primary_coin,
     False,
 )
 
