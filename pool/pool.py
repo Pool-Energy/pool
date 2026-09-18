@@ -34,6 +34,7 @@ from chia.wallet.wallet_rpc_client import (
 from chia.wallet.wallet_request_types import (
     GetWalletBalance,
     GetTransaction,
+    GetHeightInfo,
     LogIn,
     PushTransactions,
 )
@@ -655,7 +656,7 @@ class Pool:
                     try:
                         wallet['synced'] = (await wallet['rpc_client'].get_sync_status()).synced
                         wallet['syncing'] = (await wallet['rpc_client'].get_sync_status()).syncing
-                        wallet['height'] = (await wallet['rpc_client'].get_height_info()).height
+                        wallet['height'] = (await wallet['rpc_client'].get_height_info(GetHeightInfo())).height
                         wallet['balance'] = (await wallet['rpc_client'].get_wallet_balance(GetWalletBalance(wallet_id=uint32(wallet['id'])))).wallet_balance
                     except aiohttp.client_exceptions.ClientConnectorError as e:
                         self.log.error(
@@ -1325,14 +1326,14 @@ class Pool:
                         self.log.info(f"Details of transaction: {transaction}")
                         await self.store.add_transaction(transaction, payment_targets)
 
-                    peak_height = (await wallet['rpc_client'].get_height_info()).height
+                    peak_height = (await wallet['rpc_client'].get_height_info(GetHeightInfo())).height
                     while (
                         not transaction.confirmed or not (
                             peak_height - transaction.confirmed_at_height
                         ) > self.confirmation_security_threshold
                     ):
                         transaction = (await wallet['rpc_client'].get_transaction(GetTransaction(transaction_id=transaction.name))).transaction
-                        peak_height = (await wallet['rpc_client'].get_height_info()).height
+                        peak_height = (await wallet['rpc_client'].get_height_info(GetHeightInfo())).height
                         self.log.info(f"Waiting for transaction to obtain {self.confirmation_security_threshold} confirmations")
                         if not transaction.confirmed:
                             is_in_mempool = transaction.is_in_mempool()
