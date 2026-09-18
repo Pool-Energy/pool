@@ -201,7 +201,13 @@ class PoolServer:
 
     async def put_farmer(self, request_obj) -> web.Response:
         # TODO(pool): add rate limiting
-        put_farmer_request: PutFarmerRequest = PutFarmerRequest.from_json_dict(await request_obj.json())
+        request = await request_obj.json()
+
+        # Compatibility shim for older farmers without authentication_token_v2 support (pool protocol v2 auth)
+        if 'authentication_token_v2' not in request.get('payload', {}):
+            request.setdefault('payload', {})['authentication_token_v2'] = ""
+
+        put_farmer_request: PutFarmerRequest = PutFarmerRequest.from_json_dict(request)
 
         authentication_token_error = check_authentication_token(
             put_farmer_request.payload.launcher_id,
