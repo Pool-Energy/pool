@@ -30,14 +30,14 @@ from chia.protocols.pool_protocol import (
 )
 from chia.wallet.wallet_rpc_client import (
     WalletRpcClient,
-    LogIn,
-    PushTransactions,
-    ConditionValidTimes,
 )
 from chia.wallet.wallet_request_types import (
     GetWalletBalance,
     GetTransaction,
+    LogIn,
+    PushTransactions,
 )
+from chia.wallet.conditions import ConditionValidTimes
 from chia.types.blockchain_format.coin import Coin
 from chia.types.blockchain_format.proof_of_space import verify_and_get_quality_string
 from chia.util.bech32m import decode_puzzle_hash
