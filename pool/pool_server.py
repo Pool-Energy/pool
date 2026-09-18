@@ -237,6 +237,10 @@ class PoolServer:
                     proof_of_space['version'] = 0
                     proof_of_space['strength'] = 0
 
+        # Compatibility shim for older farmers without authentication_token_v2 support (pool protocol v2 auth)
+        if 'authentication_token_v2' not in request:
+            request['authentication_token_v2'] = ""
+
         try:
             partial: PostPartialRequest = PostPartialRequest.from_json_dict(request)
         except ValueError as e:
