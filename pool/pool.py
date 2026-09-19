@@ -1570,6 +1570,14 @@ class Pool:
     ) -> None:
         if self.node_rpc_client is None:
             self.log.error("Node RPC client is not initialized, cannot confirm partial")
+            await self.partials.add_partial(
+                partial.payload,
+                req_metadata,
+                time_received,
+                points_received,
+                999.999,
+                'NODE_NOT_AVAILABLE',
+            )
             return
         try:
             response = await self.get_signage_point_or_eos(partial)
@@ -1669,6 +1677,14 @@ class Pool:
 
                 if farmer_record is None:
                     self.log.info('Unknown launcher %r', partial.payload.launcher_id.hex())
+                    await self.partials.add_partial(
+                        partial.payload,
+                        req_metadata,
+                        time_received,
+                        points_received,
+                        partial_time_taken,
+                        'UNKNOWN_LAUNCHER',
+                    )
                     return
 
                 assert (
@@ -1684,8 +1700,36 @@ class Pool:
                         points_received,
                         partial_time_taken
                     )
+                else:
+                    self.log.info(
+                        "Farmer %r is not (or no longer) a pool member, discarding partial",
+                        farmer_record.launcher_id.hex(),
+                    )
+                    await self.partials.add_partial(
+                        partial.payload,
+                        req_metadata,
+                        time_received,
+                        points_received,
+                        partial_time_taken,
+                        'NOT_POOL_MEMBER',
+                    )
         except Exception:
             self.log.error('Exception in confirming partial', exc_info=True)
+            # Make sure a partial never gets stuck forever in the "to be
+            # validated" state (live UI / redis pending snapshot) just
+            # because of an unexpected exception here: resolve it as a
+            # (best-effort, safe-guarded) failure instead of losing track of it.
+            try:
+                await self.partials.add_partial(
+                    partial.payload,
+                    req_metadata,
+                    time_received,
+                    points_received,
+                    locals().get('partial_time_taken', 999.999),
+                    'INTERNAL_ERROR',
+                )
+            except Exception:
+                self.log.error('Failed to resolve partial after an internal error', exc_info=True)
 
     async def add_farmer(self, request: PostFarmerRequest, metadata: RequestMetadata) -> Dict:
         async with self.store.lock:
