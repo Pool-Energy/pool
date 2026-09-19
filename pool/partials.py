@@ -11,7 +11,7 @@ from chia.protocols.pool_protocol import PostPartialPayload
 from chia_rs.sized_bytes import bytes32
 from chia_rs.sized_ints import uint64
 
-from .util import RequestMetadata
+from .util import RequestMetadata, classify_partial_status
 
 
 logger = logging.getLogger('partials')
@@ -448,16 +448,23 @@ class Partials(object):
         )
 
         # Broadcast the partial live to connected WebSocket clients (via redis pub/sub)
+        sp_hash_hex = partial_payload.sp_hash.hex()
+        harvester_id_hex = partial_payload.harvester_id.hex()
+        launcher_id_hex = partial_payload.launcher_id.hex()
         _create_background_task(
             self.store_live.publish_partial(
-                partial_payload.launcher_id.hex(),
+                launcher_id_hex,
                 {
-                    'launcher_id': partial_payload.launcher_id.hex(),
-                    'harvester_id': partial_payload.harvester_id.hex(),
+                    'launcher_id': launcher_id_hex,
+                    'harvester_id': harvester_id_hex,
+                    'sp_hash': sp_hash_hex,
+                    'end_of_sub_slot': bool(partial_payload.end_of_sub_slot),
                     'timestamp': int(timestamp),
                     'difficulty': int(difficulty),
                     'time_taken': time_taken,
                     'error': error,
+                    'status': classify_partial_status(error),
+                    'partial_key': f'{launcher_id_hex}:{harvester_id_hex}:{sp_hash_hex}:{int(timestamp)}',
                     'chia_version': (
                         str((req_metadata.get_chia_version() or ''))[:20] or None
                     ) if req_metadata else None,

@@ -349,3 +349,43 @@ def calculate_effort(
         effort = (time_since_last / effective_etw) * 100
 
     return effort
+
+
+# Partial `error` string -> live/UI status category. Used to group live
+# partials by signage point (see .partials_component.ts / `/partials` page).
+PARTIAL_STATUS_STALE = frozenset({
+    'SP_EOS_REVERTED',
+    'SP_REVERTED',
+    'EOS_REVERTED',
+    'SP_EOS_NOT_FOUND',
+    'INVALID_TOO_LATE',
+})
+PARTIAL_STATUS_DUPLICATE = frozenset({
+    'DOUBLE_SIGNAGE_POINT',
+})
+PARTIAL_STATUS_INVALID = frozenset({
+    'INVALID_AGG_SIGNATURE',
+    'INVALID_POOL_CONTRACT',
+    'INVALID_PROOF_OF_SPACE',
+    'PROOF_NOT_GOOD_ENOUGH',
+    'INVALID_SINGLETON',
+    'SINGLETON_NOT_POOL',
+    'INVALID_VERSION',
+    'LAUNCHER_BANNED',
+})
+
+
+def classify_partial_status(error: str | None) -> str:
+    """
+    Maps a partial's internal `error` string (or `None`) to one of the
+    live/UI status categories: 'valid', 'stale', 'duplicate', 'invalid'.
+    Unknown/future error strings default to 'invalid' (fail safe).
+    """
+    if error is None:
+        return 'valid'
+    if error in PARTIAL_STATUS_STALE:
+        return 'stale'
+    if error in PARTIAL_STATUS_DUPLICATE:
+        return 'duplicate'
+    return 'invalid'
+
