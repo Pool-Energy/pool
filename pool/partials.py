@@ -458,6 +458,9 @@ class Partials(object):
                     'difficulty': int(difficulty),
                     'time_taken': time_taken,
                     'error': error,
+                    'chia_version': (
+                        str((req_metadata.get_chia_version() or ''))[:20] or None
+                    ) if req_metadata else None,
                 },
             ),
             name="live_publish_partial",
