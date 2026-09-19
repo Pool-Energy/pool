@@ -949,7 +949,41 @@ class Pool:
                     if spend_bundle is None:
                         continue
 
-                    push_tx_response: Dict = await self.node_rpc_client.push_tx(spend_bundle)
+                    try:
+                        push_tx_response: Dict = await self.node_rpc_client.push_tx(spend_bundle)
+                    except ResponseFailureError as e:
+                        error_data = (e.response or {}).get('structuredError', {}).get('data', {})
+                        error_code = error_data.get('error')
+                        # The mempool was more congested than our tracked `blockchain_mempool_full_pct`
+                        # (refreshed only periodically) suggested, so our AUTO/threshold fee decision
+                        # picked a zero/too-low fee. Retry once with a forced fee instead of looping
+                        # forever on the same rejected (and never-adjusted) zero-fee transaction.
+                        if error_code in ('INVALID_FEE_TOO_CLOSE_TO_ZERO', 'INVALID_FEE_LOW_FEE') and self.absorb_fee != AbsorbFee.TRUE:
+                            self.log.warning(
+                                "Transaction rejected due to insufficient fee (%s), mempool more "
+                                "congested than tracked (%s%%). Retrying with a forced fee.",
+                                error_code, self.blockchain_mempool_full_pct,
+                            )
+                            spend_bundle = await create_absorb_transaction(
+                                self.node_rpc_client,
+                                self.wallets,
+                                rec,
+                                self.blockchain_state["peak"].height,
+                                [cr],
+                                AbsorbFee.TRUE,
+                                self.absorb_fee_mempool,
+                                self.absorb_fee_absolute,
+                                used_fee_coins,
+                                self.blockchain_mempool_full_pct,
+                                self.mojos_per_cost,
+                                self.constants,
+                            )
+                            if spend_bundle is None:
+                                continue
+                            push_tx_response = await self.node_rpc_client.push_tx(spend_bundle)
+                        else:
+                            raise
+
                     if push_tx_response["status"] == "SUCCESS":
                         # See farmers_seen comment above
                         farmers_seen.add(rec.launcher_id)
