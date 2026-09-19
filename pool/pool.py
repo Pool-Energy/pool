@@ -383,6 +383,15 @@ class Pool:
                         node['rpc_port'],
                         e
                     )
+                except Exception as e:
+                    self.log.error(
+                        'Unexpected error querying node %r (%s:%s), retrying in 2 seconds: %s',
+                        node['name'],
+                        node['rpc_host'],
+                        node['rpc_port'],
+                        e,
+                        exc_info=True,
+                    )
                 else:
                     # use the first node enabled that is available
                     if not working_node:
@@ -614,7 +623,7 @@ class Pool:
             'available': node.get('available', True),
             'priority': node.get('priority', 50),
             'primary': is_primary,
-            'version': node['version'].get('version', '0.0.0-dev'),
+            'version': (node.get('version') or {}).get('version', '0.0.0-dev'),
         }
 
     @task_exception
@@ -638,6 +647,12 @@ class Pool:
                         node['available'] = False
                     else:
                         working_node = True
+
+                    try:
+                        node['version'] = await node['rpc_client'].get_version()
+                    except Exception as e:
+                        self.log.error(f"Failed to get version for node {node['name']}: {e}", exc_info=True)
+                        node['version'] = node.get('version') or {}
 
                 if not working_node:
                     self.log.critical('Unable to get blockchain state from any node')
