@@ -2176,28 +2176,28 @@ class Pool:
         )
 
         # Broadcast the "to be validated" (pending phase-2 confirmation) status
-        # live to connected WebSocket clients (via redis pub/sub)
+        # live to connected WebSocket clients (via redis pub/sub), and record
+        # it in the persistent "pending state" snapshot (see RedisStore) so
+        # clients connecting later still see it as in-progress.
         launcher_id_hex = partial.payload.launcher_id.hex()
         harvester_id_hex = partial.payload.harvester_id.hex()
         sp_hash_hex = partial.payload.sp_hash.hex()
-        asyncio.create_task(
-            self.store_live.publish_partial(
-                launcher_id_hex,
-                {
-                    'launcher_id': launcher_id_hex,
-                    'harvester_id': harvester_id_hex,
-                    'sp_hash': sp_hash_hex,
-                    'end_of_sub_slot': bool(partial.payload.end_of_sub_slot),
-                    'timestamp': int(time_received_partial),
-                    'difficulty': int(current_difficulty),
-                    'time_taken': None,
-                    'error': None,
-                    'status': 'pending',
-                    'partial_key': f'{launcher_id_hex}:{harvester_id_hex}:{sp_hash_hex}:{int(time_received_partial)}',
-                    'chia_version': None,
-                }
-            )
-        )
+        partial_key = f'{launcher_id_hex}:{harvester_id_hex}:{sp_hash_hex}:{int(time_received_partial)}'
+        pending_payload = {
+            'launcher_id': launcher_id_hex,
+            'harvester_id': harvester_id_hex,
+            'sp_hash': sp_hash_hex,
+            'end_of_sub_slot': bool(partial.payload.end_of_sub_slot),
+            'timestamp': int(time_received_partial),
+            'difficulty': int(current_difficulty),
+            'time_taken': None,
+            'error': None,
+            'status': 'pending',
+            'partial_key': partial_key,
+            'chia_version': None,
+        }
+        asyncio.create_task(self.store_live.publish_partial(launcher_id_hex, pending_payload))
+        asyncio.create_task(self.store_live.set_partial_pending(partial_key, pending_payload))
 
         try:
             launcher_lock = self.launcher_lock[partial.payload.launcher_id]

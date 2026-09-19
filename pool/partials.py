@@ -451,6 +451,7 @@ class Partials(object):
         sp_hash_hex = partial_payload.sp_hash.hex()
         harvester_id_hex = partial_payload.harvester_id.hex()
         launcher_id_hex = partial_payload.launcher_id.hex()
+        partial_key = f'{launcher_id_hex}:{harvester_id_hex}:{sp_hash_hex}:{int(timestamp)}'
         _create_background_task(
             self.store_live.publish_partial(
                 launcher_id_hex,
@@ -464,13 +465,20 @@ class Partials(object):
                     'time_taken': time_taken,
                     'error': error,
                     'status': classify_partial_status(error),
-                    'partial_key': f'{launcher_id_hex}:{harvester_id_hex}:{sp_hash_hex}:{int(timestamp)}',
+                    'partial_key': partial_key,
                     'chia_version': (
                         str((req_metadata.get_chia_version() or ''))[:20] or None
                     ) if req_metadata else None,
                 },
             ),
             name="live_publish_partial",
+        )
+        # This partial is now resolved (terminal status): remove it from the
+        # persistent "to be validated" snapshot state (no-op if it was never
+        # recorded there, e.g. a phase-1 direct rejection).
+        _create_background_task(
+            self.store_live.clear_partial_pending(partial_key),
+            name="live_clear_partial_pending",
         )
 
         # Add to the cache and compute the estimated farm size if a successful partial

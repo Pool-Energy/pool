@@ -7,6 +7,13 @@ import redis.asyncio as aioredis
 
 logger = logging.getLogger('redis_store')
 
+# Redis hash used to keep track of partials currently "to be validated"
+# (accepted phase-1, awaiting phase-2 confirmation). This is a regular,
+# persistent key (unlike pub/sub channels, which are fire-and-forget), so a
+# freshly-connected WebSocket client can fetch a snapshot of what's
+# currently in progress instead of starting blank (see `api/src/api/consumers.py`).
+PENDING_PARTIALS_KEY = 'partials:pending_state'
+
 
 class RedisStore(object):
     """
@@ -48,6 +55,27 @@ class RedisStore(object):
     async def publish_partial(self, launcher_id: str, payload: Dict) -> None:
         await self._publish('live:partial:all', payload)
         await self._publish(f'live:partial:{launcher_id}', payload)
+
+    async def set_partial_pending(self, partial_key: str, payload: Dict) -> None:
+        """Records a partial as currently "to be validated" so it can be
+        included in the snapshot sent to newly-connected clients."""
+        if self.client is None:
+            return
+        try:
+            await self.client.hset(PENDING_PARTIALS_KEY, partial_key, json.dumps(payload, default=str))
+        except Exception:
+            logger.warning('Failed to record pending partial %r', partial_key, exc_info=True)
+
+    async def clear_partial_pending(self, partial_key: str) -> None:
+        """Removes a partial from the "to be validated" snapshot state, once
+        it has been resolved (valid/stale/duplicate/invalid) or immediately
+        rejected without ever going through the pending phase (no-op)."""
+        if self.client is None:
+            return
+        try:
+            await self.client.hdel(PENDING_PARTIALS_KEY, partial_key)
+        except Exception:
+            logger.warning('Failed to clear pending partial %r', partial_key, exc_info=True)
 
     async def publish_block(self, launcher_id: str | None, payload: Dict) -> None:
         await self._publish('live:block:all', payload)
