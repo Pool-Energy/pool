@@ -17,6 +17,14 @@ from ..task import task_exception
 
 logger = logging.getLogger('influxdb_store')
 
+# InfluxDB writes are best-effort telemetry: if a write fails (e.g. the
+# frequent "unexpected error writing points to database: timeout" seen under
+# load), retry a few times with a short delay rather than dropping the point
+# immediately, since these errors are usually transient (momentary write
+# pressure on InfluxDB's storage engine).
+WRITE_MAX_ATTEMPTS = 3
+WRITE_RETRY_DELAY_SECONDS = 5
+
 
 class InfluxdbStore(object):
     def __init__(self, pool_config: Dict):
@@ -34,26 +42,44 @@ class InfluxdbStore(object):
         self.write_api = self.client.write_api()
         self.query_api = self.client.query_api()
 
+    async def _write(self, bucket: str, record: Point) -> None:
+        for attempt in range(1, WRITE_MAX_ATTEMPTS + 1):
+            try:
+                return await self.write_api.write(bucket=bucket, record=record)
+            except Exception as e:
+                if attempt < WRITE_MAX_ATTEMPTS:
+                    logger.warning(
+                        "InfluxDB write to bucket %r failed (attempt %d/%d), retrying in %ds: %s",
+                        bucket, attempt, WRITE_MAX_ATTEMPTS, WRITE_RETRY_DELAY_SECONDS, e,
+                    )
+                    await asyncio.sleep(WRITE_RETRY_DELAY_SECONDS)
+                else:
+                    logger.error(
+                        "InfluxDB write to bucket %r failed after %d attempts, giving up: %s",
+                        bucket, WRITE_MAX_ATTEMPTS, e, exc_info=True,
+                    )
+        return None
+
     @task_exception
     async def add_launcher_size(self, launcher_id: str, size: int, size_8h: int):
         p = Point('launcher_size').tag('launcher', launcher_id).field(
             'size', size).field('size_8h', size_8h)
-        return await self.write_api.write(bucket=self.bucket, record=p)
+        return await self._write(bucket=self.bucket, record=p)
 
     async def add_pool_size(self, sizes: Dict[str, int]):
         p = Point('pool_size')
         for k, v in sizes.items():
             p = p.field(k, v)
-        return await self.write_api.write(bucket=self.bucket, record=p)
+        return await self._write(bucket=self.bucket, record=p)
 
     async def add_mempool(self, size: int, cost: int, max_cost: int):
         p = Point('mempool').field('size', size).field('cost', cost).field(
             'max_cost', max_cost).field('full_pct', float((cost / max_cost) * 100))
-        return await self.write_api.write(bucket=self.bucket, record=p)
+        return await self._write(bucket=self.bucket, record=p)
 
     async def add_netspace(self, size: int):
         p = Point('netspace').field('size', size / 1024 / 1024)
-        return await self.write_api.write(bucket=self.bucket, record=p)
+        return await self._write(bucket=self.bucket, record=p)
 
     async def add_partial(
         self,
@@ -67,7 +93,7 @@ class InfluxdbStore(object):
             'harvester', partial_payload.harvester_id.hex()).tag(
             'error', error).field(
             'difficulty', int(difficulty))
-        return await self.write_api.write(bucket=self.bucket_partial, record=p)
+        return await self._write(bucket=self.bucket_partial, record=p)
 
     async def add_xchprice(self, xch_price: Dict):
         p = Point('xchprice').field(
@@ -76,7 +102,7 @@ class InfluxdbStore(object):
             'gbp', xch_price['gbp']).field(
             'btc', xch_price['btc']).field(
             'eth', xch_price['eth'])
-        return await self.write_api.write(bucket=self.bucket, record=p)
+        return await self._write(bucket=self.bucket, record=p)
 
     async def add_block(
         self,
@@ -97,7 +123,7 @@ class InfluxdbStore(object):
             'amount', int(reward_record.coin.amount)).field(
             'farmed_by', farmer.launcher_id.hex()).field(
             'pool_space', pool_space)
-        return await self.write_api.write(bucket=self.bucket, record=p)
+        return await self._write(bucket=self.bucket, record=p)
 
     async def get_launcher_sizes(self, launcher_id: str, start: str):
         q = await self.query_api.query(
