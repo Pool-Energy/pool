@@ -615,10 +615,24 @@ class Pool:
         self.primary_node = current_node
 
     def node_state_to_dict(self, node, is_primary=False):
+        sync = node['blockchain_state'].get('sync') or {}
+        peak_height = node['blockchain_state']['peak'].height if node['blockchain_state'].get('peak') else None
+        synced = sync.get('synced', False)
+        sync_tip_height = sync.get('sync_tip_height') or 0
+        sync_progress_height = sync.get('sync_progress_height') or 0
+        if synced:
+            sync_percent = 100.0
+        elif sync_tip_height:
+            sync_percent = round((sync_progress_height / sync_tip_height) * 100, 2)
+        else:
+            sync_percent = 0.0
         return {
             'name': node['name'],
-            'synced': (node['blockchain_state'].get('sync') or {}).get('synced', False),
-            'peak_height': node['blockchain_state']['peak'].height if node['blockchain_state'].get('peak') else None,
+            'synced': synced,
+            'sync_percent': sync_percent,
+            'sync_progress_height': sync_progress_height,
+            'sync_tip_height': sync_tip_height,
+            'peak_height': peak_height,
             'mempool_full_pct': node.get('blockchain_mempool_full_pct', 0),
             'location': node.get('location', 'unknown'),
             'region': node.get('region', 'unknown'),
