@@ -17,6 +17,26 @@ from .util import RequestMetadata
 logger = logging.getLogger('partials')
 
 
+def _create_background_task(coro, name: str = None):
+    """
+    Wrapper around asyncio.create_task that ensures exceptions raised in
+    fire-and-forget background tasks are logged instead of being silently
+    swallowed (or surfacing as "Task exception was never retrieved").
+    """
+    task = asyncio.create_task(coro, name=name)
+
+    def _log_exception(t: asyncio.Task):
+        if t.cancelled():
+            return
+        exc = t.exception()
+        if exc is not None:
+            logger.error(f"Background task {t.get_name()} failed: {exc}", exc_info=exc)
+
+    task.add_done_callback(_log_exception)
+    return task
+
+
+
 class PartialsInterval(object):
 
     def __init__(self, keep_interval):
@@ -153,7 +173,10 @@ class PartialsCache(dict):
             [estimated_size, points, share_pplns, current_etw],
         )
 
-        asyncio.create_task(self.store_ts.add_launcher_size(launcher_id, estimated_size_24h, estimated_size_8h))
+        _create_background_task(
+            self.store_ts.add_launcher_size(launcher_id, estimated_size_24h, estimated_size_8h),
+            name="add_launcher_size",
+        )
 
 
 class Partials(object):
@@ -404,21 +427,23 @@ class Partials(object):
         )
 
         # Add partial into timeseries database
-        asyncio.create_task(
+        _create_background_task(
             self.store_ts.add_partial(
                 partial_payload,
                 timestamp,
                 difficulty,
                 error
-            )
+            ),
+            name="influxdb_add_partial",
         )
 
         # Update harvester version
-        asyncio.create_task(
+        _create_background_task(
             self.store.update_harvester(
                 partial_payload,
                 req_metadata
-            )
+            ),
+            name="update_harvester",
         )
 
         # Add to the cache and compute the estimated farm size if a successful partial
