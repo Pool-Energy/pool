@@ -185,6 +185,7 @@ class Partials(object):
         self.pool = pool
         self.store = pool.store
         self.store_ts = pool.store_ts
+        self.store_live = pool.store_live
         self.config = pool.config
         self.pool_config = pool.pool_config
         # By default keep partials for the last day
@@ -444,6 +445,22 @@ class Partials(object):
                 req_metadata
             ),
             name="update_harvester",
+        )
+
+        # Broadcast the partial live to connected WebSocket clients (via redis pub/sub)
+        _create_background_task(
+            self.store_live.publish_partial(
+                partial_payload.launcher_id.hex(),
+                {
+                    'launcher_id': partial_payload.launcher_id.hex(),
+                    'harvester_id': partial_payload.harvester_id.hex(),
+                    'timestamp': int(timestamp),
+                    'difficulty': int(difficulty),
+                    'time_taken': time_taken,
+                    'error': error,
+                },
+            ),
+            name="live_publish_partial",
         )
 
         # Add to the cache and compute the estimated farm size if a successful partial

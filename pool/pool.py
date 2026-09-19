@@ -88,6 +88,7 @@ from .singleton import (
 )
 from .store.influxdb_store import InfluxdbStore
 from .store.postgresql_store import PostgresqlPoolStore
+from .store.redis_store import RedisStore
 from .record import FarmerRecord
 from .task import task_exception
 from .types import AbsorbFee, PaymentFee
@@ -128,6 +129,7 @@ class Pool:
 
         self.store = PostgresqlPoolStore(pool_config)
         self.store_ts = InfluxdbStore(pool_config)
+        self.store_live = RedisStore(pool_config)
         self.notifications = Notifications(self)
         self.partials = Partials(self)
 
@@ -295,6 +297,7 @@ class Pool:
     async def start(self):
         await self.store.connect()
         await self.store_ts.connect()
+        await self.store_live.connect()
         await self.partials.load_from_store()
 
         lprint(length=69, height=1, char="*")
@@ -681,38 +684,51 @@ class Pool:
                             e
                         )
 
+                wallets_list = [
+                    {
+                        'name': i['name'],
+                        'address': i['address'],
+                        'amount': i['balance'].confirmed_wallet_balance,
+                        'balance': {
+                            'wallet_id': i['balance'].wallet_id,
+                            'fingerprint': i['balance'].fingerprint,
+                            'confirmed_wallet_balance': i['balance'].confirmed_wallet_balance,
+                            'unconfirmed_wallet_balance': i['balance'].unconfirmed_wallet_balance,
+                            'spendable_balance': i['balance'].spendable_balance,
+                            'pending_change': i['balance'].pending_change,
+                            'max_send_amount': i['balance'].max_send_amount,
+                            'unspent_coin_count': i['balance'].unspent_coin_count,
+                            'pending_coin_removal_count': i['balance'].pending_coin_removal_count,
+                            'pending_approval_balance': i['balance'].pending_approval_balance,
+                        },
+                        'synced': i['synced'],
+                        'syncing': i['syncing'],
+                        'height': i['height'],
+                    }
+                    for i in self.wallets
+                ]
+                nodes_list = [
+                    self.node_state_to_dict(node, is_primary=(node == self.primary_node))
+                    for node in self.nodes
+                ]
+
                 asyncio.create_task(self.store.set_globalinfo({
                     'blockchain_height': self.blockchain_state['peak'].height,
                     'blockchain_space': self.blockchain_state['space'],
                     'blockchain_avg_block_time': await self.get_average_block_time(),
-                    'wallets': json.dumps([
-                        {
-                            'name': i['name'],
-                            'address': i['address'],
-                            'amount': i['balance'].confirmed_wallet_balance,
-                            'balance': {
-                                'wallet_id': i['balance'].wallet_id,
-                                'fingerprint': i['balance'].fingerprint,
-                                'confirmed_wallet_balance': i['balance'].confirmed_wallet_balance,
-                                'unconfirmed_wallet_balance': i['balance'].unconfirmed_wallet_balance,
-                                'spendable_balance': i['balance'].spendable_balance,
-                                'pending_change': i['balance'].pending_change,
-                                'max_send_amount': i['balance'].max_send_amount,
-                                'unspent_coin_count': i['balance'].unspent_coin_count,
-                                'pending_coin_removal_count': i['balance'].pending_coin_removal_count,
-                                'pending_approval_balance': i['balance'].pending_approval_balance,
-                            },
-                            'synced': i['synced'],
-                            'syncing': i['syncing'],
-                            'height': i['height'],
-                        }
-                        for i in self.wallets
-                    ]),
-                    'nodes': json.dumps([
-                        self.node_state_to_dict(node, is_primary=(node == self.primary_node))
-                        for node in self.nodes
-                    ]),
+                    'wallets': json.dumps(wallets_list),
+                    'nodes': json.dumps(nodes_list),
                 }))
+
+                # Broadcast the pool status live to connected WebSocket clients (via redis pub/sub)
+                asyncio.create_task(
+                    self.store_live.publish_pool_status({
+                        'blockchain_height': self.blockchain_state['peak'].height,
+                        'blockchain_space': self.blockchain_state['space'],
+                        'wallets': wallets_list,
+                        'nodes': nodes_list,
+                    })
+                )
 
                 asyncio.create_task(
                     self.store_ts.add_netspace(int(self.blockchain_state['space']))
@@ -1094,6 +1110,22 @@ class Pool:
                             gigahorse_fee,
                         )
 
+                        # Broadcast the new block live to connected WebSocket clients (via redis pub/sub)
+                        asyncio.create_task(
+                            self.store_live.publish_block(
+                                farmer.launcher_id.hex(),
+                                {
+                                    'farmed_height': int.from_bytes(bytes(reward.coin.parent_coin_info)[16:], 'big'),
+                                    'launcher_id': farmer.launcher_id.hex(),
+                                    'name': farmer.name,
+                                    'amount': int(reward.coin.amount),
+                                    'timestamp': int(reward.timestamp),
+                                    'launcher_effort': launcher_effort,
+                                    'pool_space': pool_size,
+                                },
+                            )
+                        )
+
                         # insert block into timeseries
                         await self.store_ts.add_block(
                             reward,
@@ -1181,6 +1213,27 @@ class Pool:
                             share['pool_fee_amount'],
                             share['referral_fee_amount'],
                             [dict(v, puzzle_hash=k) for k, v in share['additions'].items()],
+                        )
+
+                        # Broadcast the payout live to connected WebSocket clients (via redis pub/sub)
+                        payout_timestamp = int(time.time())
+                        per_launcher_payload = {}
+                        for addition in share['additions'].values():
+                            for launcher_id in addition.get('launcher_ids', []):
+                                per_launcher_payload[launcher_id] = {
+                                    'launcher_id': launcher_id,
+                                    'amount': addition['amount'],
+                                    'timestamp': payout_timestamp,
+                                }
+                        asyncio.create_task(
+                            self.store_live.publish_payout(
+                                {
+                                    'amount': total_amount_claimed,
+                                    'fee': share['pool_fee_amount'],
+                                    'timestamp': payout_timestamp,
+                                },
+                                per_launcher_payload,
+                            )
                         )
 
                         # Subtract the points from each farmer
