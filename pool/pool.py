@@ -2126,8 +2126,20 @@ class Pool:
         
         # Calculate required iterations - backward compatibility
         calc_sig = inspect.signature(calculate_iterations_quality)
-        if len(calc_sig.parameters) == 5:
-            # Chia v2.6.0+ (5 parameters)
+        if 'height' in calc_sig.parameters:
+            # Chia v2.7.x+ (height became a required keyword-only argument)
+            # Same "peak_height + 1" convention as the verify_and_get_quality_string
+            # call above: we're evaluating suitability for the next block.
+            required_iters: uint64 = calculate_iterations_quality(
+                self.constants,
+                quality_string,
+                plot_param,
+                current_difficulty,
+                partial.payload.sp_hash,
+                height=uint32(peak_height + 1),
+            )
+        elif len(calc_sig.parameters) == 5:
+            # Chia v2.6.0 (5 positional parameters, no height)
             required_iters: uint64 = calculate_iterations_quality(
                 self.constants,
                 quality_string,
