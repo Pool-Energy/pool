@@ -21,7 +21,7 @@ from chia_rs.sized_ints import uint64
 from chia_rs.sized_bytes import bytes32
 
 from ..record import FarmerRecord
-from ..util import RequestMetadata, calculate_effort, days_pooling
+from ..util import RequestMetadata, calculate_effort, days_pooling, get_plot_size_k
 
 
 COOLDOWN_LEFT_JOIN_HOURS = 12
@@ -453,21 +453,7 @@ class PostgresqlPoolStore(object):
         error: str | None = None,
     ) -> None:
         # Backward compatibility: support both param() (v2.6.0+) and size() (< v2.6.0)
-        if hasattr(partial_payload.proof_of_space, 'param'):
-            plot_size_obj = partial_payload.proof_of_space.param()
-        else:
-            plot_size_obj = partial_payload.proof_of_space.size()
-        
-        if hasattr(plot_size_obj, 'size_v1') and plot_size_obj.size_v1 is not None:
-            plot_size_k = int(plot_size_obj.size_v1)
-        elif hasattr(plot_size_obj, 'strength_v2') and plot_size_obj.strength_v2 is not None:
-            plot_size_k = int(plot_size_obj.strength_v2)
-        elif hasattr(plot_size_obj, 'size_v2') and plot_size_obj.size_v2 is not None:
-            # Fallback for older versions
-            plot_size_k = int(plot_size_obj.size_v2)
-        else:
-            plot_size_k = 32
-            logger.warning(f"Fallback size k=32 for {partial_payload.launcher_id.hex()}")
+        plot_size_k = get_plot_size_k(partial_payload.proof_of_space)
 
         async with self.pool.acquire() as conn:
             async with conn.cursor() as cursor:

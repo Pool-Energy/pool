@@ -11,7 +11,7 @@ from chia.protocols.pool_protocol import PostPartialPayload
 from chia_rs.sized_bytes import bytes32
 from chia_rs.sized_ints import uint64
 
-from .util import RequestMetadata, classify_partial_status
+from .util import RequestMetadata, classify_partial_status, get_plot_size_k
 
 
 logger = logging.getLogger('partials')
@@ -452,6 +452,12 @@ class Partials(object):
         harvester_id_hex = partial_payload.harvester_id.hex()
         launcher_id_hex = partial_payload.launcher_id.hex()
         partial_key = f'{launcher_id_hex}:{harvester_id_hex}:{sp_hash_hex}:{int(timestamp)}'
+        try:
+            plot_id_hex = partial_payload.proof_of_space.compute_plot_id().hex()
+            plot_size_k = get_plot_size_k(partial_payload.proof_of_space)
+        except Exception:
+            plot_id_hex = None
+            plot_size_k = None
         _create_background_task(
             self.store_live.publish_partial(
                 launcher_id_hex,
@@ -466,6 +472,8 @@ class Partials(object):
                     'error': error,
                     'status': classify_partial_status(error),
                     'partial_key': partial_key,
+                    'plot_id': plot_id_hex,
+                    'plot_size': plot_size_k,
                     'chia_version': (
                         str((req_metadata.get_chia_version() or ''))[:20] or None
                     ) if req_metadata else None,

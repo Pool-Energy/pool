@@ -97,6 +97,7 @@ from .util import (
     calculate_effort,
     create_transaction,
     error_dict,
+    get_plot_size_k,
     payment_targets_to_additions,
 )
 from .xchprice import XCHPrice
@@ -2333,6 +2334,12 @@ class Pool:
         harvester_id_hex = partial.payload.harvester_id.hex()
         sp_hash_hex = partial.payload.sp_hash.hex()
         partial_key = f'{launcher_id_hex}:{harvester_id_hex}:{sp_hash_hex}:{int(time_received_partial)}'
+        try:
+            plot_id_hex = partial.payload.proof_of_space.compute_plot_id().hex()
+            plot_size_k = get_plot_size_k(partial.payload.proof_of_space)
+        except Exception:
+            plot_id_hex = None
+            plot_size_k = None
         pending_payload = {
             'launcher_id': launcher_id_hex,
             'harvester_id': harvester_id_hex,
@@ -2344,7 +2351,11 @@ class Pool:
             'error': None,
             'status': 'pending',
             'partial_key': partial_key,
-            'chia_version': None,
+            'plot_id': plot_id_hex,
+            'plot_size': plot_size_k,
+            'chia_version': (
+                str((req_metadata.get_chia_version() or ''))[:20] or None
+            ) if req_metadata else None,
         }
         asyncio.create_task(self.store_live.publish_partial(launcher_id_hex, pending_payload))
         asyncio.create_task(self.store_live.set_partial_pending(partial_key, pending_payload))

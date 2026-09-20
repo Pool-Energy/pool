@@ -394,3 +394,29 @@ def classify_partial_status(error: str | None) -> str:
         return 'duplicate'
     return 'invalid'
 
+
+def get_plot_size_k(proof_of_space) -> int:
+    """
+    Extracts the plot size ("k" value / V2 strength) from a ProofOfSpace,
+    with backward compatibility for both `param()` (chia v2.6.0+) and
+    `size()` (older versions). Shared between postgresql_store.add_partial()
+    (DB persistence) and the live/redis partial event payloads, so both
+    surfaces report the exact same value.
+    """
+    if hasattr(proof_of_space, 'param'):
+        plot_size_obj = proof_of_space.param()
+    else:
+        plot_size_obj = proof_of_space.size()
+
+    if hasattr(plot_size_obj, 'size_v1') and plot_size_obj.size_v1 is not None:
+        return int(plot_size_obj.size_v1)
+    elif hasattr(plot_size_obj, 'strength_v2') and plot_size_obj.strength_v2 is not None:
+        return int(plot_size_obj.strength_v2)
+    elif hasattr(plot_size_obj, 'size_v2') and plot_size_obj.size_v2 is not None:
+        # Fallback for older versions
+        return int(plot_size_obj.size_v2)
+    else:
+        logger.warning("Fallback size k=32 (unrecognized proof_of_space size shape)")
+        return 32
+
+
