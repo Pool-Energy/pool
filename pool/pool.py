@@ -265,6 +265,7 @@ class Pool:
 
         # Tasks (infinite While loops) for different purposes
         self.confirm_partials_loop_task: asyncio.Task | None = None
+        self.stuck_partials_watchdog_loop_task: asyncio.Task | None = None
         self.collect_pool_rewards_loop_task: asyncio.Task | None = None
         self.create_payment_loop_tasks: List[asyncio.Task] = []
         self.submit_payment_loop_tasks: List[asyncio.Task] = []
@@ -440,6 +441,7 @@ class Pool:
         self.scan_p2_singleton_puzzle_hashes = await self.store.get_pay_to_singleton_phs()
 
         self.confirm_partials_loop_task = asyncio.create_task(self.confirm_partials_loop())
+        self.stuck_partials_watchdog_loop_task = asyncio.create_task(self.stuck_partials_watchdog_loop())
         self.collect_pool_rewards_loop_task = asyncio.create_task(self.collect_pool_rewards_loop())
         for wallet in self.wallets:
             if wallet['use_reward_coin']:
@@ -471,6 +473,8 @@ class Pool:
     async def stop(self):
         if self.confirm_partials_loop_task is not None:
             self.confirm_partials_loop_task.cancel()
+        if self.stuck_partials_watchdog_loop_task is not None:
+            self.stuck_partials_watchdog_loop_task.cancel()
         if self.collect_pool_rewards_loop_task is not None:
             self.collect_pool_rewards_loop_task.cancel()
         for create_payment_loop_task in self.create_payment_loop_tasks:
@@ -1538,6 +1542,55 @@ class Pool:
 
             except Exception as e:
                 self.log.error(f"Unexpected error: {e}", exc_info=True)
+
+    @task_exception
+    async def stuck_partials_watchdog_loop(self):
+        """
+        Safety net for partials that are stuck forever in the "to be
+        validated" live/UI state (the `partials:pending_state` redis hash),
+        because a *non-graceful* `pool` shutdown/crash (SIGKILL, OOM, exceeding
+        docker's stop grace period, ...) can orphan them: they were recorded
+        as "pending" (redis_store.set_partial_pending) and queued in-memory,
+        but the in-memory queue/task state does not survive an ungraceful
+        restart, and the fallback DB persistence (`add_pending_partial`) only
+        runs on a *graceful* cancellation of `confirm_partials_loop`.
+
+        This does NOT (and cannot) recover the lost partial data itself -
+        it only force-resolves the live/UI tracking so it doesn't show a
+        handful of partials as eternally "to be validated".
+        """
+        # Generous margin above `partial_confirmation_delay`: a partial still
+        # legitimately being confirmed should never be older than that.
+        max_age_seconds = self.partial_confirmation_delay + 120
+
+        while True:
+            try:
+                await asyncio.sleep(60)
+
+                pending = await self.store_live.get_all_pending_partials()
+                if not pending:
+                    continue
+
+                now = time.time()
+                for partial_key, payload in pending.items():
+                    age = now - (payload.get('timestamp') or 0)
+                    if age <= max_age_seconds:
+                        continue
+
+                    self.log.warning(
+                        "Force-resolving orphaned pending partial %r (age: %ds, likely lost to a "
+                        "non-graceful pool restart)", partial_key, int(age),
+                    )
+                    resolved_payload = dict(payload)
+                    resolved_payload['status'] = 'stale'
+                    resolved_payload['error'] = 'CONFIRMATION_TIMEOUT'
+                    await self.store_live.publish_partial(payload.get('launcher_id', ''), resolved_payload)
+                    await self.store_live.clear_partial_pending(partial_key)
+            except asyncio.CancelledError:
+                self.log.info("Cancelled stuck_partials_watchdog_loop, closing")
+                return
+            except Exception:
+                self.log.error("Unexpected error in stuck_partials_watchdog_loop", exc_info=True)
 
     async def get_signage_point_or_eos(
         self,

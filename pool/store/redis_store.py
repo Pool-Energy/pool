@@ -77,6 +77,28 @@ class RedisStore(object):
         except Exception:
             logger.warning('Failed to clear pending partial %r', partial_key, exc_info=True)
 
+    async def get_all_pending_partials(self) -> Dict[str, Dict]:
+        """Returns every currently-recorded "to be validated" partial
+        (partial_key -> payload), used by the stuck-partials watchdog to
+        detect and force-resolve entries that were orphaned by a non-graceful
+        `pool` shutdown/crash (see `Pool.stuck_partials_watchdog_loop`)."""
+        if self.client is None:
+            return {}
+        try:
+            raw = await self.client.hgetall(PENDING_PARTIALS_KEY)
+        except Exception:
+            logger.warning('Failed to fetch pending partials', exc_info=True)
+            return {}
+        result = {}
+        for key, value in raw.items():
+            try:
+                key = key.decode() if isinstance(key, bytes) else key
+                value = value.decode() if isinstance(value, bytes) else value
+                result[key] = json.loads(value)
+            except ValueError:
+                continue
+        return result
+
     async def publish_block(self, launcher_id: str | None, payload: Dict) -> None:
         await self._publish('live:block:all', payload)
         if launcher_id:
