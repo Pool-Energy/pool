@@ -1509,11 +1509,14 @@ class Pool:
                 pid = next(count)
                 processing[pid] = (partial, req_metadata, time_received, points_received)
 
-                # Wait a few minutes to check if partial is still valid in the blockchain (no reorgs)
-                await asyncio.sleep((max(0, time_received + self.partial_confirmation_delay - time.time() - 5)))
-
                 async def process_partial(pid, partial, req_metadata, time_received, points_received):
                     try:
+                        # Wait a few minutes to check if partial is still valid in the blockchain
+                        # (no reorgs). This happens *inside* the spawned per-partial task (not in
+                        # the main dequeue loop above) so that waiting out this delay for one
+                        # partial never blocks dequeuing/scheduling the next ones: they all wait
+                        # and get checked concurrently, each on their own schedule.
+                        await asyncio.sleep(max(0, time_received + self.partial_confirmation_delay - time.time() - 5))
                         await self.check_and_confirm_partial(
                             partial, req_metadata, time_received, points_received
                         )
@@ -1521,7 +1524,8 @@ class Pool:
                         plogger.error('Failed to check and confirm partial', exc_info=True)
                     del processing[pid]
 
-                # Starts a task to check the remaining things for this partial and optionally update points
+                # Starts a task to wait out the confirmation delay, then check the remaining
+                # things for this partial and optionally update points.
                 asyncio.create_task(process_partial(
                     int(pid), partial, req_metadata, time_received, points_received
                 ))
@@ -1560,8 +1564,12 @@ class Pool:
         handful of partials as eternally "to be validated".
         """
         # Generous margin above `partial_confirmation_delay`: a partial still
-        # legitimately being confirmed should never be older than that.
-        max_age_seconds = self.partial_confirmation_delay + 120
+        # legitimately being confirmed should never be older than that. Kept
+        # wide (on top of the confirm_partials_loop fix that removed the
+        # "convoy" delay under load) so this only ever catches genuinely
+        # orphaned partials (lost to a non-graceful restart/crash), never a
+        # merely-slow-but-still-in-flight one.
+        max_age_seconds = self.partial_confirmation_delay + 600
 
         while True:
             try:
@@ -1578,8 +1586,7 @@ class Pool:
                         continue
 
                     self.log.warning(
-                        "Force-resolving orphaned pending partial %r (age: %ds, likely lost to a "
-                        "non-graceful pool restart)", partial_key, int(age),
+                        "Removing orphaned pending partial %r (age: %ds)", partial_key, int(age),
                     )
                     resolved_payload = dict(payload)
                     resolved_payload['status'] = 'stale'
