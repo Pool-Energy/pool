@@ -1593,6 +1593,7 @@ class Pool:
                     resolved_payload['status'] = 'stale'
                     resolved_payload['error'] = 'CONFIRMATION_TIMEOUT'
                     await self.store_live.publish_partial(payload.get('launcher_id', ''), resolved_payload)
+                    await self.store_live.record_recent_partial(resolved_payload)
                     await self.store_live.clear_partial_pending(partial_key)
             except asyncio.CancelledError:
                 self.log.info("Cancelled stuck_partials_watchdog_loop, closing")
@@ -2359,6 +2360,7 @@ class Pool:
         }
         asyncio.create_task(self.store_live.publish_partial(launcher_id_hex, pending_payload))
         asyncio.create_task(self.store_live.set_partial_pending(partial_key, pending_payload))
+        asyncio.create_task(self.store_live.record_recent_partial(pending_payload))
 
         try:
             launcher_lock = self.launcher_lock[partial.payload.launcher_id]

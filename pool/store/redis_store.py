@@ -1,7 +1,8 @@
 import json
 import logging
+import time
 
-from typing import Dict
+from typing import Dict, List
 
 import redis.asyncio as aioredis
 
@@ -13,6 +14,14 @@ logger = logging.getLogger('redis_store')
 # freshly-connected WebSocket client can fetch a snapshot of what's
 # currently in progress instead of starting blank (see `api/src/api/consumers.py`).
 PENDING_PARTIALS_KEY = 'partials:pending_state'
+
+# Redis sorted set (score = event time) recording every partial event
+# (pending *and* resolved) for a short rolling window, so a freshly-connected
+# client on the `/partials` page can be backfilled with recent activity
+# (grouped by signage point) instead of starting completely blank - unlike
+# `PENDING_PARTIALS_KEY` above, this also includes already-resolved partials.
+RECENT_PARTIALS_KEY = 'partials:recent_events'
+RECENT_PARTIALS_WINDOW_SECONDS = 15 * 60
 
 
 class RedisStore(object):
@@ -95,6 +104,45 @@ class RedisStore(object):
                 key = key.decode() if isinstance(key, bytes) else key
                 value = value.decode() if isinstance(value, bytes) else value
                 result[key] = json.loads(value)
+            except ValueError:
+                continue
+        return result
+
+    async def record_recent_partial(self, payload: Dict) -> None:
+        """Appends a partial event (pending or resolved) to a rolling
+        `RECENT_PARTIALS_WINDOW_SECONDS`-wide history, used to backfill the
+        `/partials` page's signage-point table on connect (see
+        `get_recent_partials`). Self-trims old entries on every write."""
+        if self.client is None:
+            return
+        try:
+            now = time.time()
+            member = json.dumps(payload, default=str)
+            async with self.client.pipeline(transaction=False) as pipe:
+                pipe.zadd(RECENT_PARTIALS_KEY, {member: now})
+                pipe.zremrangebyscore(RECENT_PARTIALS_KEY, '-inf', now - RECENT_PARTIALS_WINDOW_SECONDS)
+                await pipe.execute()
+        except Exception:
+            logger.warning('Failed to record recent partial event', exc_info=True)
+
+    async def get_recent_partials(self, window_seconds: int = RECENT_PARTIALS_WINDOW_SECONDS) -> List[Dict]:
+        """Returns every partial event (pending and resolved) recorded within
+        the last `window_seconds`, oldest first, so a client can replay them
+        in order and reconstruct the same state it would have reached had it
+        been connected the whole time."""
+        if self.client is None:
+            return []
+        try:
+            now = time.time()
+            raw = await self.client.zrangebyscore(RECENT_PARTIALS_KEY, now - window_seconds, '+inf')
+        except Exception:
+            logger.warning('Failed to fetch recent partials', exc_info=True)
+            return []
+        result = []
+        for value in raw:
+            try:
+                value = value.decode() if isinstance(value, bytes) else value
+                result.append(json.loads(value))
             except ValueError:
                 continue
         return result

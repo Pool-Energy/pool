@@ -458,28 +458,30 @@ class Partials(object):
         except Exception:
             plot_id_hex = None
             plot_size_k = None
+        live_payload = {
+            'launcher_id': launcher_id_hex,
+            'harvester_id': harvester_id_hex,
+            'sp_hash': sp_hash_hex,
+            'end_of_sub_slot': bool(partial_payload.end_of_sub_slot),
+            'timestamp': int(timestamp),
+            'difficulty': int(difficulty),
+            'time_taken': time_taken,
+            'error': error,
+            'status': classify_partial_status(error),
+            'partial_key': partial_key,
+            'plot_id': plot_id_hex,
+            'plot_size': plot_size_k,
+            'chia_version': (
+                str((req_metadata.get_chia_version() or ''))[:20] or None
+            ) if req_metadata else None,
+        }
         _create_background_task(
-            self.store_live.publish_partial(
-                launcher_id_hex,
-                {
-                    'launcher_id': launcher_id_hex,
-                    'harvester_id': harvester_id_hex,
-                    'sp_hash': sp_hash_hex,
-                    'end_of_sub_slot': bool(partial_payload.end_of_sub_slot),
-                    'timestamp': int(timestamp),
-                    'difficulty': int(difficulty),
-                    'time_taken': time_taken,
-                    'error': error,
-                    'status': classify_partial_status(error),
-                    'partial_key': partial_key,
-                    'plot_id': plot_id_hex,
-                    'plot_size': plot_size_k,
-                    'chia_version': (
-                        str((req_metadata.get_chia_version() or ''))[:20] or None
-                    ) if req_metadata else None,
-                },
-            ),
+            self.store_live.publish_partial(launcher_id_hex, live_payload),
             name="live_publish_partial",
+        )
+        _create_background_task(
+            self.store_live.record_recent_partial(live_payload),
+            name="live_record_recent_partial",
         )
         # This partial is now resolved (terminal status): remove it from the
         # persistent "to be validated" snapshot state (no-op if it was never
