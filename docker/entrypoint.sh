@@ -3,14 +3,18 @@
 set -e
 
 export CHIA_ROOT=/data/chia/${CHIA_NETWORK:=mainnet}
-loglevel=${LOGLEVEL:=INFO}
-logdir=${LOGDIR:=/data/pool_log}
 
 trap "killall python" TERM
 
 simpleproxy -d -L 127.0.0.1:25 -R ${MAIL_HOSTNAME:=mail}:25
 
-exec ./venv/bin/python -m pool.pool_server \
-	--log-level ${loglevel} \
-	--log-dir ${logdir} \
-	-c /data/config.yaml
+if [ ! -e "${CHIA_ROOT}/config/config.yaml" ]; then
+    ./venv/bin/chia init --root-path ${CHIA_ROOT}
+fi
+
+exec ./venv/bin/python \
+    -m pool.pool_server \
+    --log-level ${LOGLEVEL:=INFO} \
+    --log-dir ${LOGDIR:=/data/logs} \
+    -c ${CONFIG_FILE:=/data/config.yaml}
+
